@@ -1,0 +1,395 @@
+===================================================================
+  MEDIDAS DAX – PAINEL HOTEL POWER BI
+  Copie cada bloco no campo "Nova Medida" dentro do Power BI Desktop
+===================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  TABELA DE MEDIDAS SUGERIDA: [_Medidas]
+  Crie uma tabela vazia chamada _Medidas e
+  organize as medidas abaixo nela.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+═══════════════════════════════
+  1. OCUPAÇÃO
+═══════════════════════════════
+
+-- Total de quartos (puxado da tabela config_hotel)
+Total Quartos =
+    VALUE(
+        LOOKUPVALUE(config_hotel[valor], config_hotel[chave], "total_quartos")
+    )
+
+
+-- Quartos ocupados no período selecionado
+Quartos Ocupados =
+    AVERAGEX(
+        VALUES(ocupacao_diaria[data]),
+        CALCULATE(SUM(ocupacao_diaria[quartos_ocupados]))
+    )
+
+
+-- Taxa de Ocupação média no período
+Taxa Ocupação =
+    DIVIDE(
+        AVERAGEX(
+            VALUES(ocupacao_diaria[data]),
+            CALCULATE(SUM(ocupacao_diaria[quartos_ocupados]))
+        ),
+        [Total Quartos],
+        0
+    )
+
+
+-- Taxa de Ocupação formatada como %
+Taxa Ocupação % =
+    FORMAT([Taxa Ocupação], "0.0%")
+
+
+-- RevPAR (Revenue Per Available Room)
+RevPAR =
+    DIVIDE(
+        SUM(faturamento_diario[valor_hospedagem]),
+        [Total Quartos] * COUNTROWS(VALUES(ocupacao_diaria[data])),
+        0
+    )
+
+
+-- ADR (Average Daily Rate = Ticket médio por diária)
+ADR =
+    DIVIDE(
+        SUM(faturamento_diario[valor_hospedagem]),
+        SUMX(
+            VALUES(ocupacao_diaria[data]),
+            CALCULATE(SUM(ocupacao_diaria[quartos_ocupados]))
+        ),
+        0
+    )
+
+
+-- Taxa de Ocupação Mês Anterior
+Taxa Ocupação Mês Anterior =
+    CALCULATE(
+        [Taxa Ocupação],
+        DATEADD(Calendario[Data], -1, MONTH)
+    )
+
+
+-- Variação de Ocupação vs Mês Anterior
+Variação Ocupação MoM =
+    [Taxa Ocupação] - [Taxa Ocupação Mês Anterior]
+
+
+-- Taxa de Ocupação Ano Anterior (mesmo período)
+Taxa Ocupação Ano Anterior =
+    CALCULATE(
+        [Taxa Ocupação],
+        SAMEPERIODLASTYEAR(Calendario[Data])
+    )
+
+
+-- Variação de Ocupação vs Ano Anterior
+Variação Ocupação YoY =
+    [Taxa Ocupação] - [Taxa Ocupação Ano Anterior]
+
+
+═══════════════════════════════
+  2. FATURAMENTO
+═══════════════════════════════
+
+-- Receita Total (hospedagem + extras + pacotes)
+Receita Total =
+    SUM(faturamento_diario[valor_hospedagem])
+    + SUM(faturamento_diario[valor_extras])
+    + SUM(faturamento_diario[valor_pacotes])
+
+
+-- Receita Líquida (após comissões)
+Receita Líquida =
+    SUM(faturamento_diario[valor_liquido])
+
+
+-- Receita de Hospedagem
+Receita Hospedagem =
+    SUM(faturamento_diario[valor_hospedagem])
+
+
+-- Receita de Extras
+Receita Extras =
+    SUM(faturamento_diario[valor_extras])
+
+
+-- Receita de Pacotes
+Receita Pacotes =
+    SUM(faturamento_diario[valor_pacotes])
+
+
+-- Total de Comissões pagas
+Total Comissões =
+    SUM(faturamento_diario[valor_comissao])
+
+
+-- Ticket Médio por Reserva
+Ticket Médio Reserva =
+    DIVIDE(
+        [Receita Total],
+        DISTINCTCOUNT(reservas[id_reserva]),
+        0
+    )
+
+
+-- Ticket Médio por Diária (= ADR)
+Ticket Médio Diária = [ADR]
+
+
+-- Faturamento Mês Anterior
+Receita Total Mês Anterior =
+    CALCULATE(
+        [Receita Total],
+        DATEADD(Calendario[Data], -1, MONTH)
+    )
+
+
+-- Variação de Receita vs Mês Anterior (%)
+Variação Receita MoM % =
+    DIVIDE(
+        [Receita Total] - [Receita Total Mês Anterior],
+        [Receita Total Mês Anterior],
+        0
+    )
+
+
+-- Faturamento Ano Anterior
+Receita Total Ano Anterior =
+    CALCULATE(
+        [Receita Total],
+        SAMEPERIODLASTYEAR(Calendario[Data])
+    )
+
+
+-- Variação de Receita vs Ano Anterior (%)
+Variação Receita YoY % =
+    DIVIDE(
+        [Receita Total] - [Receita Total Ano Anterior],
+        [Receita Total Ano Anterior],
+        0
+    )
+
+
+-- Receita Acumulada no Ano (YTD)
+Receita YTD =
+    CALCULATE(
+        [Receita Total],
+        DATESYTD(Calendario[Data])
+    )
+
+
+-- Receita Acumulada no Mês (MTD)
+Receita MTD =
+    CALCULATE(
+        [Receita Total],
+        DATESMTD(Calendario[Data])
+    )
+
+
+═══════════════════════════════
+  3. CANAIS DE VENDA
+═══════════════════════════════
+
+-- Total de Reservas Confirmadas
+Total Reservas =
+    CALCULATE(
+        COUNTROWS(reservas),
+        reservas[status] = "Confirmada"
+    )
+
+
+-- Reservas por Canal (usada em tabela/gráfico com canal no eixo)
+Reservas por Canal =
+    CALCULATE(
+        COUNTROWS(reservas),
+        reservas[status] = "Confirmada"
+    )
+
+
+-- % de Reservas por Canal
+% Reservas Canal =
+    DIVIDE(
+        [Reservas por Canal],
+        CALCULATE([Total Reservas], ALL(reservas[canal])),
+        0
+    )
+
+
+-- Receita por Canal
+Receita por Canal =
+    [Receita Total]
+
+
+-- % de Receita por Canal
+% Receita Canal =
+    DIVIDE(
+        [Receita por Canal],
+        CALCULATE([Receita Total], ALL(faturamento_diario[canal])),
+        0
+    )
+
+
+-- Receita Direta (sem comissão)
+Receita Direta =
+    CALCULATE(
+        [Receita Total],
+        faturamento_diario[canal] = "Direta"
+    )
+
+
+-- Receita OTAs
+Receita OTAs =
+    CALCULATE(
+        [Receita Total],
+        faturamento_diario[canal] IN {"Booking.com", "Expedia", "Airbnb"}
+    )
+
+
+-- Receita Corporativa
+Receita Corporativa =
+    CALCULATE(
+        [Receita Total],
+        faturamento_diario[canal] = "Corporativa"
+    )
+
+
+═══════════════════════════════
+  4. TIPOS DE RESERVA
+═══════════════════════════════
+
+-- Reservas de Lazer
+Reservas Lazer =
+    CALCULATE(
+        COUNTROWS(reservas),
+        reservas[tipo_reserva] = "Lazer",
+        reservas[status] = "Confirmada"
+    )
+
+
+-- Reservas Corporativas
+Reservas Corporativas =
+    CALCULATE(
+        COUNTROWS(reservas),
+        reservas[tipo_reserva] = "Corporativa",
+        reservas[status] = "Confirmada"
+    )
+
+
+-- Diárias em Alta Temporada
+Diárias Alta Temporada =
+    CALCULATE(
+        COUNTROWS(faturamento_diario),
+        reservas[temporada] = "Alta"
+    )
+
+
+-- Diárias em Baixa Temporada
+Diárias Baixa Temporada =
+    CALCULATE(
+        COUNTROWS(faturamento_diario),
+        reservas[temporada] = "Baixa"
+    )
+
+
+-- Receita Fins de Semana
+Receita Fim de Semana =
+    CALCULATE(
+        [Receita Total],
+        reservas[fds_checkin] = "Fim de Semana"
+    )
+
+
+-- Taxa de Cancelamento
+Taxa Cancelamento =
+    DIVIDE(
+        CALCULATE(COUNTROWS(reservas), reservas[status] = "Cancelada"),
+        COUNTROWS(reservas),
+        0
+    )
+
+
+-- Taxa de No-show
+Taxa No-show =
+    DIVIDE(
+        CALCULATE(COUNTROWS(reservas), reservas[status] = "No-show"),
+        COUNTROWS(reservas),
+        0
+    )
+
+
+-- Duração Média de Estadia
+Duração Média Estadia =
+    AVERAGEX(
+        FILTER(reservas, reservas[status] = "Confirmada"),
+        reservas[num_diarias]
+    )
+
+
+═══════════════════════════════
+  5. KPIs GERENCIAIS
+═══════════════════════════════
+
+-- Indicador visual: Taxa de Ocupação vs Meta (ex: 75%)
+Status Ocupação =
+    VAR meta = 0.75
+    VAR atual = [Taxa Ocupação]
+    RETURN
+        IF(atual >= meta, "✅ Acima da Meta",
+            IF(atual >= meta * 0.90, "⚠️ Próximo da Meta",
+               "❌ Abaixo da Meta"))
+
+
+-- Indicador visual: Receita vs Mês Anterior
+Status Receita MoM =
+    VAR var = [Variação Receita MoM %]
+    RETURN
+        IF(var > 0.05, "↑ Alta",
+            IF(var >= -0.05, "→ Estável",
+               "↓ Queda"))
+
+
+-- Projeção de Receita do Mês (baseada nos dias já passados)
+Projeção Receita Mês =
+    VAR dias_mes    = DAY(EOMONTH(MAX(Calendario[Data]), 0))
+    VAR dias_passados = DAY(MAX(Calendario[Data]))
+    VAR receita_ate_hoje = [Receita MTD]
+    RETURN
+        IF(
+            dias_passados > 0,
+            DIVIDE(receita_ate_hoje, dias_passados) * dias_mes,
+            BLANK()
+        )
+
+
+===================================================================
+  TABELA CALENDÁRIO (DAX)
+  Criar via: Modelagem > Nova Tabela
+===================================================================
+
+Calendario =
+ADDCOLUMNS(
+    CALENDAR(DATE(2024, 1, 1), DATE(2026, 12, 31)),
+    "Ano",           YEAR([Date]),
+    "Mês Num",       MONTH([Date]),
+    "Nome Mês",      FORMAT([Date], "MMM"),
+    "Nome Mês Longo", FORMAT([Date], "MMMM"),
+    "Trimestre",     "T" & FORMAT(ROUNDUP(MONTH([Date]) / 3, 0), "0"),
+    "Semana Ano",    WEEKNUM([Date]),
+    "Dia Semana Num", WEEKDAY([Date], 2),
+    "Dia Semana",    FORMAT([Date], "ddd"),
+    "Dia Semana Longo", FORMAT([Date], "dddd"),
+    "Fim de Semana", IF(WEEKDAY([Date], 2) >= 5, "Fim de Semana", "Dia de Semana"),
+    "Temporada",     IF(
+                         MONTH([Date]) IN {1, 7, 8, 12},
+                         "Alta Temporada",
+                         "Baixa Temporada"
+                     ),
+    "Ano-Mês",       FORMAT([Date], "YYYY-MM"),
+    "Data Formatada", FORMAT([Date], "DD/MM/YYYY")
+)

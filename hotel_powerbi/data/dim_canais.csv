@@ -1,0 +1,7 @@
+canal,tipo_canal,comissao_pct
+Direta,Direta,0.0
+Booking.com,OTA,0.15
+Expedia,OTA,0.18
+Airbnb,OTA,0.14
+Corporativa,Corporativa,0.08
+Agência de Viagem,Agência,0.12
