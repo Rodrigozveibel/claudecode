@@ -1,0 +1,259 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Hotel configuration / settings
+// ---------------------------------------------------------------------------
+model Hotel {
+  id            String   @id @default(cuid())
+  name          String
+  phone         String?
+  email         String?
+  address       String?
+  checkInTime   String   @default("14:00")
+  checkOutTime  String   @default("12:00")
+  policies      String?  @db.Text
+  amenities     String[] @default([])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Rooms
+// ---------------------------------------------------------------------------
+enum RoomStatus {
+  LIVRE
+  OCUPADO
+  LIMPEZA
+  MANUTENCAO
+}
+
+model Room {
+  id           String        @id @default(cuid())
+  number       String        @unique
+  type         String // Standard, Luxo, Suíte, etc.
+  floor        Int           @default(1)
+  capacity     Int           @default(2)
+  rate         Float // diária em R$
+  status       RoomStatus    @default(LIVRE)
+  amenities    String[]      @default([])
+  description  String?       @db.Text
+  reservations Reservation[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Guests
+// ---------------------------------------------------------------------------
+enum GuestSegment {
+  LEAD
+  PAST_GUEST
+  LOYAL
+}
+
+model Guest {
+  id            String         @id @default(cuid())
+  name          String
+  phone         String         @unique
+  email         String?
+  cpf           String?
+  segment       GuestSegment   @default(LEAD)
+  notes         String?        @db.Text
+  reservations  Reservation[]
+  quotes        Quote[]
+  followUps     FollowUp[]
+  feedbacks     Feedback[]
+  conversations Conversation[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Reservations
+// ---------------------------------------------------------------------------
+enum ReservationStatus {
+  PENDENTE
+  CONFIRMADA
+  CANCELADA
+  NO_SHOW
+  FINALIZADA
+}
+
+model Reservation {
+  id          String            @id @default(cuid())
+  guestId     String
+  guest       Guest             @relation(fields: [guestId], references: [id])
+  roomId      String
+  room        Room              @relation(fields: [roomId], references: [id])
+  checkIn     DateTime
+  checkOut    DateTime
+  status      ReservationStatus @default(PENDENTE)
+  totalAmount Float
+  guests      Int               @default(1)
+  notes       String?           @db.Text
+  feedbacks   Feedback[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Conversations + Messages
+// ---------------------------------------------------------------------------
+enum ConversationStatus {
+  ACTIVE
+  RESOLVED
+  BOT
+  HUMAN
+}
+
+model Conversation {
+  id         String             @id @default(cuid())
+  guestPhone String
+  guestName  String?
+  guestId    String?
+  guest      Guest?             @relation(fields: [guestId], references: [id])
+  status     ConversationStatus @default(BOT)
+  unread     Int                @default(0)
+  messages   Message[]
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([guestPhone])
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  AUDIO
+}
+
+model Message {
+  id             String           @id @default(cuid())
+  conversationId String
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  content        String           @db.Text
+  direction      MessageDirection
+  type           MessageType      @default(TEXT)
+  fromBot        Boolean          @default(false)
+  mediaUrl       String?
+  createdAt      DateTime         @default(now())
+
+  @@index([conversationId])
+}
+
+// ---------------------------------------------------------------------------
+// Quotes
+// ---------------------------------------------------------------------------
+enum QuoteStatus {
+  ATIVA
+  EXPIRADA
+  CONVERTIDA
+  RECUSADA
+}
+
+model Quote {
+  id        String      @id @default(cuid())
+  guestId   String
+  guest     Guest       @relation(fields: [guestId], references: [id])
+  roomType  String
+  checkIn   DateTime
+  checkOut  DateTime
+  nights    Int
+  price     Float
+  status    QuoteStatus @default(ATIVA)
+  expiresAt DateTime
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// FollowUps (automated)
+// ---------------------------------------------------------------------------
+enum FollowUpType {
+  QUOTE_2H
+  QUOTE_24H
+  QUOTE_48H
+  QUOTE_7D
+  FEEDBACK
+}
+
+enum FollowUpStatus {
+  PENDING
+  SENT
+  CANCELLED
+}
+
+model FollowUp {
+  id              String         @id @default(cuid())
+  guestId         String
+  guest           Guest          @relation(fields: [guestId], references: [id])
+  type            FollowUpType
+  scheduledAt     DateTime
+  status          FollowUpStatus @default(PENDING)
+  templateMessage String         @db.Text
+  quoteId         String?
+  reservationId   String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([status, scheduledAt])
+}
+
+// ---------------------------------------------------------------------------
+// Promotions / Campaigns
+// ---------------------------------------------------------------------------
+enum PromotionStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+enum TargetSegment {
+  ALL
+  PAST_GUESTS
+  LEADS
+  LOYAL
+}
+
+model Promotion {
+  id            String          @id @default(cuid())
+  name          String
+  message       String          @db.Text
+  targetSegment TargetSegment   @default(ALL)
+  scheduledAt   DateTime?
+  status        PromotionStatus @default(DRAFT)
+  sentCount     Int             @default(0)
+  totalTargets  Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Feedback
+// ---------------------------------------------------------------------------
+model Feedback {
+  id            String       @id @default(cuid())
+  guestId       String
+  guest         Guest        @relation(fields: [guestId], references: [id])
+  reservationId String?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
+  rating        Int // 1-5
+  comment       String?      @db.Text
+  source        String       @default("whatsapp")
+  createdAt     DateTime     @default(now())
+}

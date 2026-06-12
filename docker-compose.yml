@@ -1,0 +1,74 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hotel_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hotel
+      POSTGRES_PASSWORD: hotelpass
+      POSTGRES_DB: hotel_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hotel -d hotel_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: hotel_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hotel_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://hotel:hotelpass@postgres:5432/hotel_ai"
+      REDIS_URL: "redis://redis:6379"
+      PORT: 3001
+      FRONTEND_URL: "http://localhost:3000"
+    env_file:
+      - .env
+    ports:
+      - "3001:3001"
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed && node dist/app.js"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hotel_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:3001"
+      NEXT_PUBLIC_SOCKET_URL: "http://localhost:3001"
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  redisdata:
