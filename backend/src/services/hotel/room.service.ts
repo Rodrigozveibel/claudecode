@@ -32,7 +32,7 @@ export const roomService = {
 
   async update(
     id: string,
-    data: Partial{
+    data: Partial<{
       type: string;
       floor: number;
       capacity: number;
