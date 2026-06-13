@@ -5,17 +5,23 @@ import { authenticate, authorize } from '../../middleware/auth';
 const router = Router();
 
 router.use(authenticate);
-router.use(authorize('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'ACCOUNTANT'));
 
-router.get('/occupancy', revenueController.getOccupancyMetrics);
-router.get('/metrics', revenueController.getRevenueMetrics);
-router.get('/adr', revenueController.getADR);
-router.get('/revpar', revenueController.getRevPAR);
-router.get('/rates', revenueController.getRatesForDateRange);
-router.get('/yield-suggestions', revenueController.getYieldSuggestions);
+router.get('/metrics', revenueController.getMetrics);
 router.get('/rate-rules', revenueController.getRateRules);
-router.post('/rate-rules', revenueController.createRateRule);
-router.put('/rate-rules/:id', revenueController.updateRateRule);
-router.delete('/rate-rules/:id', revenueController.deleteRateRule);
+router.post(
+  '/rate-rules',
+  authorize('SUPER_ADMIN', 'ADMIN', 'MANAGER'),
+  revenueController.createRateRule
+);
+router.put(
+  '/rate-rules/:id',
+  authorize('SUPER_ADMIN', 'ADMIN', 'MANAGER'),
+  revenueController.updateRateRule
+);
+router.delete(
+  '/rate-rules/:id',
+  authorize('SUPER_ADMIN', 'ADMIN'),
+  revenueController.deleteRateRule
+);
 
 export default router;

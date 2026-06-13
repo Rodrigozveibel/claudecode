@@ -1,34 +1,31 @@
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler';
-import { getPagination } from '../../utils/pagination';
-import { Request } from 'express';
 
-export async function createGuest(data: {
+export interface CreateGuestData {
   propertyId: string;
   firstName: string;
   lastName: string;
-  email?: string;
+  email: string;
   phone?: string;
-  document?: string;
   documentType?: string;
+  documentNumber?: string;
   nationality?: string;
-  birthDate?: Date;
+  birthDate?: string;
   address?: string;
   city?: string;
   country?: string;
-  preferences?: unknown;
+  preferences?: object;
   notes?: string;
-}) {
-  return prisma.guest.create({ data: data as Parameters<typeof prisma.guest.create>[0]['data'] });
 }
 
-export async function getGuests(req: Request, propertyId?: string) {
-  const { page, limit, skip } = getPagination(req);
-  const search = req.query.search as string | undefined;
-  const where: Record<string, unknown> = {};
-
-  if (propertyId) where.propertyId = propertyId;
-  if (req.query.blacklisted !== undefined) where.blacklisted = req.query.blacklisted === 'true';
+export async function getAll(
+  propertyId: string,
+  page = 1,
+  limit = 20,
+  search?: string
+) {
+  const skip = (page - 1) * limit;
+  const where: Record<string, unknown> = { propertyId };
 
   if (search) {
     where.OR = [
@@ -36,145 +33,122 @@ export async function getGuests(req: Request, propertyId?: string) {
       { lastName: { contains: search, mode: 'insensitive' } },
       { email: { contains: search, mode: 'insensitive' } },
       { phone: { contains: search, mode: 'insensitive' } },
-      { document: { contains: search, mode: 'insensitive' } },
     ];
   }
 
-  const [items, total] = await Promise.all([
+  const [guests, total] = await Promise.all([
     prisma.guest.findMany({
       where,
       skip,
       take: limit,
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        nationality: true,
+        totalStays: true,
+        totalSpent: true,
+        loyaltyPoints: true,
+        blacklisted: true,
+        createdAt: true,
+      },
     }),
     prisma.guest.count({ where }),
   ]);
 
-  return { items, total, page, limit };
+  return { guests, total, page, limit };
 }
 
-export async function getGuestById(id: string) {
+export async function getById(id: string) {
   const guest = await prisma.guest.findUnique({
     where: { id },
     include: {
-      _count: { select: { reservations: true } },
+      reservations: {
+        include: {
+          room: { select: { number: true } },
+          roomType: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      },
     },
   });
   if (!guest) throw new AppError('Guest not found', 404);
   return guest;
 }
 
-export async function updateGuest(id: string, data: Partial<{
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  document: string;
-  documentType: string;
-  nationality: string;
-  birthDate: Date;
-  address: string;
-  city: string;
-  country: string;
-  preferences: unknown;
-  notes: string;
-}>) {
-  const guest = await prisma.guest.findUnique({ where: { id } });
-  if (!guest) throw new AppError('Guest not found', 404);
+export async function create(data: CreateGuestData) {
+  const existing = await prisma.guest.findUnique({ where: { email: data.email } });
+  if (existing) throw new AppError('Email already registered', 409);
 
-  return prisma.guest.update({ where: { id }, data: data as Parameters<typeof prisma.guest.update>[0]['data'] });
+  return prisma.guest.create({
+    data: {
+      ...data,
+      birthDate: data.birthDate ? new Date(data.birthDate) : undefined,
+      preferences: data.preferences || {},
+    },
+  });
 }
 
-export async function deleteGuest(id: string) {
-  const guest = await prisma.guest.findUnique({ where: { id } });
-  if (!guest) throw new AppError('Guest not found', 404);
+export async function update(id: string, data: Partial<CreateGuestData>) {
+  const existing = await prisma.guest.findUnique({ where: { id } });
+  if (!existing) throw new AppError('Guest not found', 404);
 
-  return prisma.guest.delete({ where: { id } });
+  if (data.email && data.email !== existing.email) {
+    const emailTaken = await prisma.guest.findUnique({ where: { email: data.email } });
+    if (emailTaken) throw new AppError('Email already in use', 409);
+  }
+
+  return prisma.guest.update({
+    where: { id },
+    data: {
+      ...data,
+      birthDate: data.birthDate ? new Date(data.birthDate) : undefined,
+    },
+  });
 }
 
-export async function blacklistGuest(id: string) {
-  const guest = await prisma.guest.findUnique({ where: { id } });
-  if (!guest) throw new AppError('Guest not found', 404);
-
-  return prisma.guest.update({ where: { id }, data: { blacklisted: true } });
+export async function search(query: string, propertyId: string) {
+  return prisma.guest.findMany({
+    where: {
+      propertyId,
+      OR: [
+        { firstName: { contains: query, mode: 'insensitive' } },
+        { lastName: { contains: query, mode: 'insensitive' } },
+        { email: { contains: query, mode: 'insensitive' } },
+        { phone: { contains: query } },
+      ],
+    },
+    take: 10,
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      totalStays: true,
+      loyaltyPoints: true,
+    },
+  });
 }
 
-export async function unblacklistGuest(id: string) {
-  const guest = await prisma.guest.findUnique({ where: { id } });
+export async function getHistory(guestId: string) {
+  const guest = await prisma.guest.findUnique({ where: { id: guestId } });
   if (!guest) throw new AppError('Guest not found', 404);
 
-  return prisma.guest.update({ where: { id }, data: { blacklisted: false } });
-}
-
-export async function getGuestHistory(id: string, req: Request) {
-  const { page, limit, skip } = getPagination(req);
-  const guest = await prisma.guest.findUnique({ where: { id } });
-  if (!guest) throw new AppError('Guest not found', 404);
-
-  const [items, total] = await Promise.all([
-    prisma.reservation.findMany({
-      where: { guestId: id },
-      skip,
-      take: limit,
-      orderBy: { checkIn: 'desc' },
-      include: {
-        room: { select: { number: true, floor: true } },
-        roomType: { select: { name: true } },
-        invoices: { select: { id: true, status: true, total: true } },
-      },
-    }),
-    prisma.reservation.count({ where: { guestId: id } }),
-  ]);
-
-  return { items, total, page, limit };
-}
-
-export async function getLoyaltyHistory(id: string, req: Request) {
-  const { page, limit, skip } = getPagination(req);
-  const guest = await prisma.guest.findUnique({ where: { id } });
-  if (!guest) throw new AppError('Guest not found', 404);
-
-  const [items, total] = await Promise.all([
-    prisma.loyaltyTransaction.findMany({
-      where: { guestId: id },
-      skip,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.loyaltyTransaction.count({ where: { guestId: id } }),
-  ]);
-
-  return { items, total, page, limit };
-}
-
-export async function mergeDuplicates(primaryId: string, duplicateIds: string[]) {
-  const primary = await prisma.guest.findUnique({ where: { id: primaryId } });
-  if (!primary) throw new AppError('Primary guest not found', 404);
-
-  await prisma.$transaction(async (tx) => {
-    for (const dupId of duplicateIds) {
-      await tx.reservation.updateMany({ where: { guestId: dupId }, data: { guestId: primaryId } });
-      await tx.payment.updateMany({ where: { guestId: dupId }, data: { guestId: primaryId } });
-      await tx.invoice.updateMany({ where: { guestId: dupId }, data: { guestId: primaryId } });
-      await tx.guestMessage.updateMany({ where: { guestId: dupId }, data: { guestId: primaryId } });
-      await tx.loyaltyTransaction.updateMany({ where: { guestId: dupId }, data: { guestId: primaryId } });
-      await tx.guest.delete({ where: { id: dupId } });
-    }
-
-    const stats = await tx.reservation.aggregate({
-      where: { guestId: primaryId, status: 'CHECKED_OUT' },
-      _count: true,
-      _sum: { totalAmount: true },
-    });
-
-    await tx.guest.update({
-      where: { id: primaryId },
-      data: {
-        totalStays: stats._count,
-        totalSpent: stats._sum.totalAmount ?? 0,
-      },
-    });
+  const reservations = await prisma.reservation.findMany({
+    where: { guestId },
+    include: {
+      room: { select: { number: true, floor: true } },
+      roomType: { select: { name: true } },
+      payments: true,
+      addons: true,
+    },
+    orderBy: { checkIn: 'desc' },
   });
 
-  return prisma.guest.findUnique({ where: { id: primaryId } });
+  return { guest, reservations };
 }

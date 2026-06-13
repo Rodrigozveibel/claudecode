@@ -1,10 +1,24 @@
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler';
-import { getPagination } from '../../utils/pagination';
 import { generateConfirmationNumber } from '../../utils/crypto';
-import { Request } from 'express';
-import { differenceInDays } from 'date-fns';
 import { ReservationStatus, ReservationSource } from '@prisma/client';
+import { differenceInDays } from 'date-fns';
+
+export interface CreateReservationData {
+  propertyId: string;
+  roomId: string;
+  roomTypeId: string;
+  guestId: string;
+  checkIn: string;
+  checkOut: string;
+  adults?: number;
+  children?: number;
+  source?: ReservationSource;
+  specialRequests?: string;
+  internalNotes?: string;
+  createdBy?: string;
+  addons?: Array<{ name: string; quantity: number; unitPrice: number }>;
+}
 
 export async function checkAvailability(
   propertyId: string,
@@ -13,29 +27,42 @@ export async function checkAvailability(
   adults: number,
   children = 0
 ) {
+  const nights = differenceInDays(checkOut, checkIn);
+  if (nights < 1) throw new AppError('Check-out must be after check-in', 400);
+
   const roomTypes = await prisma.roomType.findMany({
-    where: { propertyId, isActive: true, maxOccupancy: { gte: adults + children } },
+    where: {
+      propertyId,
+      isActive: true,
+      maxAdults: { gte: adults },
+      maxOccupancy: { gte: adults + children },
+    },
     include: {
       rooms: {
-        where: {
-          isActive: true,
-          status: { notIn: ['OUT_OF_ORDER', 'MAINTENANCE'] },
-          reservations: {
-            none: {
-              status: { in: ['CONFIRMED', 'CHECKED_IN'] },
-              OR: [{ checkIn: { lt: checkOut }, checkOut: { gt: checkIn } }],
-            },
-          },
-        },
+        where: { isActive: true, status: { not: 'OUT_OF_ORDER' } },
+        select: { id: true, number: true, floor: true, status: true },
       },
     },
   });
 
-  const nights = differenceInDays(checkOut, checkIn);
+  const busyRoomIds = await prisma.reservation.findMany({
+    where: {
+      propertyId,
+      status: { in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+      OR: [
+        { checkIn: { gte: checkIn, lt: checkOut } },
+        { checkOut: { gt: checkIn, lte: checkOut } },
+        { checkIn: { lte: checkIn }, checkOut: { gte: checkOut } },
+      ],
+    },
+    select: { roomId: true },
+  });
 
-  return roomTypes
-    .filter((rt) => rt.rooms.length > 0)
-    .map((rt) => ({
+  const busyIds = new Set(busyRoomIds.map((r) => r.roomId));
+
+  return roomTypes.map((rt) => {
+    const availableRooms = rt.rooms.filter((r) => !busyIds.has(r.id));
+    return {
       roomTypeId: rt.id,
       name: rt.name,
       description: rt.description,
@@ -45,187 +72,74 @@ export async function checkAvailability(
       basePrice: rt.basePrice,
       totalPrice: rt.basePrice * nights,
       nights,
-      availableRooms: rt.rooms.length,
       amenities: rt.amenities,
       photos: rt.photos,
-    }));
+      availableRooms,
+      availableCount: availableRooms.length,
+    };
+  });
 }
 
-export async function calculatePrice(
-  roomTypeId: string,
-  checkIn: Date,
-  checkOut: Date,
-  addons?: Array<{ name: string; quantity: number; unitPrice: number }>
-) {
+export async function calculatePrice(roomTypeId: string, checkIn: Date, checkOut: Date) {
   const roomType = await prisma.roomType.findUnique({ where: { id: roomTypeId } });
   if (!roomType) throw new AppError('Room type not found', 404);
 
   const nights = differenceInDays(checkOut, checkIn);
-  if (nights <= 0) throw new AppError('Invalid date range', 400);
+  if (nights < 1) throw new AppError('Invalid dates', 400);
 
-  const property = await prisma.property.findUnique({ where: { id: roomType.propertyId } });
+  const baseTotal = roomType.basePrice * nights;
 
-  let roomRate = roomType.basePrice;
-
-  const activeRules = await prisma.rateRule.findMany({
-    where: {
-      roomTypeId,
-      isActive: true,
-      OR: [
-        { startDate: null },
-        { startDate: { lte: checkOut }, endDate: { gte: checkIn } },
-      ],
-    },
-  });
-
-  for (const rule of activeRules) {
-    if (rule.startDate && rule.endDate) {
-      roomRate = rule.amount;
-    }
-  }
-
-  const roomTotal = roomRate * nights;
-  const addonsTotal = (addons || []).reduce((sum, a) => sum + a.quantity * a.unitPrice, 0);
-  const subtotal = roomTotal + addonsTotal;
-  const taxRate = property?.taxRate ?? 0;
-  const taxes = subtotal * (taxRate / 100);
-  const total = subtotal + taxes;
-
-  return { roomRate, nights, roomTotal, addonsTotal, subtotal, taxes, total, taxRate };
+  return {
+    roomTypeId,
+    roomTypeName: roomType.name,
+    basePrice: roomType.basePrice,
+    nights,
+    baseTotal,
+    taxes: baseTotal * 0.1,
+    total: baseTotal + baseTotal * 0.1,
+  };
 }
 
-export async function createReservation(data: {
-  propertyId: string;
-  roomId?: string;
-  roomTypeId: string;
-  guestId: string;
-  checkIn: Date;
-  checkOut: Date;
-  adults: number;
-  children?: number;
-  source?: ReservationSource;
-  channelBookingId?: string;
-  specialRequests?: string;
-  internalNotes?: string;
-  createdBy?: string;
-  addons?: Array<{ name: string; quantity: number; unitPrice: number }>;
-}) {
-  const guest = await prisma.guest.findUnique({ where: { id: data.guestId } });
-  if (!guest) throw new AppError('Guest not found', 404);
-  if (guest.blacklisted) throw new AppError('Guest is blacklisted', 403);
-
-  const nights = differenceInDays(data.checkOut, data.checkIn);
-  if (nights <= 0) throw new AppError('Invalid date range', 400);
-
-  if (data.roomId) {
-    const conflict = await prisma.reservation.findFirst({
-      where: {
-        roomId: data.roomId,
-        status: { in: ['CONFIRMED', 'CHECKED_IN'] },
-        OR: [{ checkIn: { lt: data.checkOut }, checkOut: { gt: data.checkIn } }],
-      },
-    });
-    if (conflict) throw new AppError('Room is not available for selected dates', 409);
+export async function getAll(
+  propertyId: string,
+  filters: {
+    status?: ReservationStatus;
+    page?: number;
+    limit?: number;
+    guestId?: string;
+    checkIn?: string;
+    checkOut?: string;
   }
+) {
+  const page = filters.page || 1;
+  const limit = filters.limit || 20;
+  const skip = (page - 1) * limit;
 
-  const priceCalc = await calculatePrice(data.roomTypeId, data.checkIn, data.checkOut, data.addons);
+  const where: Record<string, unknown> = { propertyId };
+  if (filters.status) where.status = filters.status;
+  if (filters.guestId) where.guestId = filters.guestId;
+  if (filters.checkIn) where.checkIn = { gte: new Date(filters.checkIn) };
+  if (filters.checkOut) where.checkOut = { lte: new Date(filters.checkOut) };
 
-  const confirmationNumber = generateConfirmationNumber();
-
-  const reservation = await prisma.$transaction(async (tx) => {
-    const res = await tx.reservation.create({
-      data: {
-        propertyId: data.propertyId,
-        roomId: data.roomId,
-        roomTypeId: data.roomTypeId,
-        guestId: data.guestId,
-        confirmationNumber,
-        status: 'CONFIRMED',
-        checkIn: data.checkIn,
-        checkOut: data.checkOut,
-        adults: data.adults,
-        children: data.children ?? 0,
-        nightsCount: nights,
-        roomRate: priceCalc.roomRate,
-        totalAmount: priceCalc.total,
-        paidAmount: 0,
-        source: data.source ?? 'DIRECT',
-        channelBookingId: data.channelBookingId,
-        specialRequests: data.specialRequests,
-        internalNotes: data.internalNotes,
-        createdBy: data.createdBy,
-      },
-      include: {
-        guest: { select: { firstName: true, lastName: true, email: true } },
-        room: { select: { number: true } },
-        roomType: { select: { name: true } },
-      },
-    });
-
-    if (data.addons && data.addons.length > 0) {
-      await tx.reservationAddon.createMany({
-        data: data.addons.map((a) => ({
-          reservationId: res.id,
-          name: a.name,
-          quantity: a.quantity,
-          unitPrice: a.unitPrice,
-          total: a.quantity * a.unitPrice,
-        })),
-      });
-    }
-
-    return res;
-  });
-
-  return reservation;
-}
-
-export async function getReservations(req: Request, propertyId?: string) {
-  const { page, limit, skip } = getPagination(req);
-  const where: Record<string, unknown> = {};
-
-  if (propertyId) where.propertyId = propertyId;
-  if (req.query.status) where.status = req.query.status;
-  if (req.query.source) where.source = req.query.source;
-  if (req.query.guestId) where.guestId = req.query.guestId;
-  if (req.query.roomId) where.roomId = req.query.roomId;
-
-  if (req.query.checkInFrom || req.query.checkInTo) {
-    where.checkIn = {
-      ...(req.query.checkInFrom ? { gte: new Date(req.query.checkInFrom as string) } : {}),
-      ...(req.query.checkInTo ? { lte: new Date(req.query.checkInTo as string) } : {}),
-    };
-  }
-
-  if (req.query.search) {
-    const search = req.query.search as string;
-    where.OR = [
-      { confirmationNumber: { contains: search, mode: 'insensitive' } },
-      { guest: { firstName: { contains: search, mode: 'insensitive' } } },
-      { guest: { lastName: { contains: search, mode: 'insensitive' } } },
-      { guest: { email: { contains: search, mode: 'insensitive' } } },
-    ];
-  }
-
-  const [items, total] = await Promise.all([
+  const [reservations, total] = await Promise.all([
     prisma.reservation.findMany({
       where,
       skip,
       take: limit,
-      orderBy: { checkIn: 'desc' },
       include: {
-        guest: { select: { firstName: true, lastName: true, email: true, phone: true } },
-        room: { select: { number: true, floor: true } },
-        roomType: { select: { name: true } },
+        guest: { select: { id: true, firstName: true, lastName: true, email: true } },
+        room: { select: { id: true, number: true, floor: true } },
+        roomType: { select: { id: true, name: true } },
       },
+      orderBy: { createdAt: 'desc' },
     }),
     prisma.reservation.count({ where }),
   ]);
 
-  return { items, total, page, limit };
+  return { reservations, total, page, limit };
 }
 
-export async function getReservationById(id: string) {
+export async function getById(id: string) {
   const reservation = await prisma.reservation.findUnique({
     where: { id },
     include: {
@@ -234,70 +148,121 @@ export async function getReservationById(id: string) {
       roomType: true,
       addons: true,
       payments: true,
-      invoices: { include: { items: true } },
+      invoice: { include: { items: true } },
     },
   });
   if (!reservation) throw new AppError('Reservation not found', 404);
   return reservation;
 }
 
-export async function getReservationByConfirmation(confirmationNumber: string) {
-  const reservation = await prisma.reservation.findUnique({
-    where: { confirmationNumber },
+export async function create(data: CreateReservationData) {
+  const checkIn = new Date(data.checkIn);
+  const checkOut = new Date(data.checkOut);
+  const nights = differenceInDays(checkOut, checkIn);
+
+  if (nights < 1) throw new AppError('Check-out must be after check-in', 400);
+
+  const room = await prisma.room.findUnique({
+    where: { id: data.roomId },
+    include: { roomType: true },
+  });
+  if (!room || !room.isActive) throw new AppError('Room not found or unavailable', 400);
+
+  const conflict = await prisma.reservation.findFirst({
+    where: {
+      roomId: data.roomId,
+      status: { in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+      OR: [
+        { checkIn: { gte: checkIn, lt: checkOut } },
+        { checkOut: { gt: checkIn, lte: checkOut } },
+        { checkIn: { lte: checkIn }, checkOut: { gte: checkOut } },
+      ],
+    },
+  });
+
+  if (conflict) throw new AppError('Room is not available for selected dates', 409);
+
+  const roomRate = room.roomType.basePrice;
+  const addonsTotal = (data.addons || []).reduce(
+    (sum, a) => sum + a.quantity * a.unitPrice,
+    0
+  );
+  const totalAmount = roomRate * nights + addonsTotal;
+
+  const reservation = await prisma.reservation.create({
+    data: {
+      propertyId: data.propertyId,
+      roomId: data.roomId,
+      roomTypeId: data.roomTypeId,
+      guestId: data.guestId,
+      confirmationNumber: generateConfirmationNumber(),
+      status: 'CONFIRMED',
+      checkIn,
+      checkOut,
+      adults: data.adults || 1,
+      children: data.children || 0,
+      nightsCount: nights,
+      roomRate,
+      totalAmount,
+      source: data.source || 'DIRECT',
+      specialRequests: data.specialRequests,
+      internalNotes: data.internalNotes,
+      createdBy: data.createdBy,
+      addons: data.addons
+        ? {
+            create: data.addons.map((a) => ({
+              name: a.name,
+              quantity: a.quantity,
+              unitPrice: a.unitPrice,
+              total: a.quantity * a.unitPrice,
+            })),
+          }
+        : undefined,
+    },
     include: {
-      guest: { select: { firstName: true, lastName: true, email: true } },
-      room: { select: { number: true } },
-      roomType: { select: { name: true } },
+      guest: { select: { id: true, firstName: true, lastName: true, email: true } },
+      room: { select: { id: true, number: true } },
+      roomType: { select: { id: true, name: true } },
+      addons: true,
     },
   });
-  if (!reservation) throw new AppError('Reservation not found', 404);
+
   return reservation;
 }
 
-export async function updateReservation(id: string, data: Partial<{
-  roomId: string;
-  checkIn: Date;
-  checkOut: Date;
-  adults: number;
-  children: number;
-  specialRequests: string;
-  internalNotes: string;
-  status: ReservationStatus;
-}>) {
-  const reservation = await prisma.reservation.findUnique({ where: { id } });
-  if (!reservation) throw new AppError('Reservation not found', 404);
+export async function update(id: string, data: Partial<CreateReservationData>) {
+  const existing = await prisma.reservation.findUnique({ where: { id } });
+  if (!existing) throw new AppError('Reservation not found', 404);
 
-  if (['CHECKED_OUT', 'CANCELLED', 'NO_SHOW'].includes(reservation.status)) {
-    throw new AppError('Cannot modify a completed reservation', 400);
+  if (existing.status === 'CANCELLED' || existing.status === 'CHECKED_OUT') {
+    throw new AppError('Cannot update a cancelled or checked-out reservation', 400);
   }
 
-  let updateData: Record<string, unknown> = { ...data };
-
-  if (data.checkIn || data.checkOut) {
-    const checkIn = data.checkIn ?? reservation.checkIn;
-    const checkOut = data.checkOut ?? reservation.checkOut;
-    const nights = differenceInDays(checkOut, checkIn);
-    updateData.nightsCount = nights;
-    updateData.totalAmount = reservation.roomRate * nights;
-  }
+  const updateData: Record<string, unknown> = {};
+  if (data.specialRequests !== undefined) updateData.specialRequests = data.specialRequests;
+  if (data.internalNotes !== undefined) updateData.internalNotes = data.internalNotes;
+  if (data.adults !== undefined) updateData.adults = data.adults;
+  if (data.children !== undefined) updateData.children = data.children;
 
   return prisma.reservation.update({
     where: { id },
-    data: updateData as Parameters<typeof prisma.reservation.update>[0]['data'],
+    data: updateData,
     include: {
-      guest: { select: { firstName: true, lastName: true } },
-      room: { select: { number: true } },
-      roomType: { select: { name: true } },
+      guest: { select: { id: true, firstName: true, lastName: true } },
+      room: { select: { id: true, number: true } },
     },
   });
 }
 
-export async function cancelReservation(id: string, reason?: string) {
+export async function cancel(id: string, reason?: string) {
   const reservation = await prisma.reservation.findUnique({ where: { id } });
   if (!reservation) throw new AppError('Reservation not found', 404);
 
-  if (['CHECKED_IN', 'CHECKED_OUT'].includes(reservation.status)) {
-    throw new AppError('Cannot cancel an active or completed reservation', 400);
+  if (reservation.status === 'CHECKED_IN') {
+    throw new AppError('Cannot cancel a checked-in reservation', 400);
+  }
+  if (reservation.status === 'CANCELLED') {
+    throw new AppError('Reservation is already cancelled', 400);
   }
 
   return prisma.reservation.update({
@@ -305,8 +270,50 @@ export async function cancelReservation(id: string, reason?: string) {
     data: {
       status: 'CANCELLED',
       internalNotes: reason
-        ? `${reservation.internalNotes ?? ''}\nCancelled: ${reason}`.trim()
+        ? `Cancelled: ${reason}\n${reservation.internalNotes || ''}`
         : reservation.internalNotes,
     },
+  });
+}
+
+export async function getTodayArrivals(propertyId: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  return prisma.reservation.findMany({
+    where: {
+      propertyId,
+      checkIn: { gte: today, lt: tomorrow },
+      status: { in: ['CONFIRMED', 'CHECKED_IN'] },
+    },
+    include: {
+      guest: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+      room: { select: { id: true, number: true, floor: true } },
+      roomType: { select: { name: true } },
+    },
+    orderBy: { checkIn: 'asc' },
+  });
+}
+
+export async function getTodayDepartures(propertyId: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  return prisma.reservation.findMany({
+    where: {
+      propertyId,
+      checkOut: { gte: today, lt: tomorrow },
+      status: 'CHECKED_IN',
+    },
+    include: {
+      guest: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+      room: { select: { id: true, number: true, floor: true } },
+      roomType: { select: { name: true } },
+    },
+    orderBy: { checkOut: 'asc' },
   });
 }

@@ -1,98 +1,115 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import * as reservationsService from './reservations.service';
 import { successResponse, paginatedResponse } from '../../utils/response';
-import { AuthRequest } from '../../middleware/auth';
+import { ReservationStatus } from '@prisma/client';
 
-export async function checkAvailability(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function checkAvailability(req: Request, res: Response, next: NextFunction) {
   try {
-    const { checkIn, checkOut, adults = '1', children = '0', propertyId } = req.query;
-    const pid = propertyId as string || req.user?.propertyId!;
-    const available = await reservationsService.checkAvailability(
-      pid,
-      new Date(checkIn as string),
-      new Date(checkOut as string),
-      parseInt(adults as string),
-      parseInt(children as string)
+    const propertyId = (req.query.propertyId as string) || req.user?.propertyId || '';
+    const checkIn = new Date(req.query.checkIn as string);
+    const checkOut = new Date(req.query.checkOut as string);
+    const adults = Number(req.query.adults) || 1;
+    const children = Number(req.query.children) || 0;
+
+    const availability = await reservationsService.checkAvailability(
+      propertyId, checkIn, checkOut, adults, children
     );
-    successResponse(res, available);
-  } catch (error) {
-    next(error);
+    successResponse(res, availability);
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function calculatePrice(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function calculatePrice(req: Request, res: Response, next: NextFunction) {
   try {
-    const { roomTypeId, checkIn, checkOut, addons } = req.body;
+    const { roomTypeId, checkIn, checkOut } = req.query;
     const pricing = await reservationsService.calculatePrice(
-      roomTypeId,
-      new Date(checkIn),
-      new Date(checkOut),
-      addons
+      roomTypeId as string,
+      new Date(checkIn as string),
+      new Date(checkOut as string)
     );
     successResponse(res, pricing);
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function createReservation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getAll(req: Request, res: Response, next: NextFunction) {
   try {
-    const propertyId = req.body.propertyId || req.user?.propertyId;
-    const reservation = await reservationsService.createReservation({
+    const propertyId = (req.query.propertyId as string) || req.user?.propertyId || '';
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+
+    const { reservations, total } = await reservationsService.getAll(propertyId, {
+      status: req.query.status as ReservationStatus | undefined,
+      page,
+      limit,
+      guestId: req.query.guestId as string | undefined,
+      checkIn: req.query.checkIn as string | undefined,
+      checkOut: req.query.checkOut as string | undefined,
+    });
+    paginatedResponse(res, reservations, total, page, limit);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getById(req: Request, res: Response, next: NextFunction) {
+  try {
+    const reservation = await reservationsService.getById(req.params.id);
+    successResponse(res, reservation);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function create(req: Request, res: Response, next: NextFunction) {
+  try {
+    const reservation = await reservationsService.create({
       ...req.body,
-      propertyId,
       createdBy: req.user?.id,
-      checkIn: new Date(req.body.checkIn),
-      checkOut: new Date(req.body.checkOut),
     });
     successResponse(res, reservation, 'Reservation created', 201);
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function getReservations(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function update(req: Request, res: Response, next: NextFunction) {
   try {
-    const propertyId = req.query.propertyId as string | undefined || req.user?.propertyId;
-    const { items, total, page, limit } = await reservationsService.getReservations(req, propertyId);
-    paginatedResponse(res, items, total, page, limit);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function getReservationById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const reservation = await reservationsService.getReservationById(req.params.id);
-    successResponse(res, reservation);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function getReservationByConfirmation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const reservation = await reservationsService.getReservationByConfirmation(req.params.confirmationNumber);
-    successResponse(res, reservation);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function updateReservation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const reservation = await reservationsService.updateReservation(req.params.id, req.body);
+    const reservation = await reservationsService.update(req.params.id, req.body);
     successResponse(res, reservation, 'Reservation updated');
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function cancelReservation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function cancel(req: Request, res: Response, next: NextFunction) {
   try {
-    const reservation = await reservationsService.cancelReservation(req.params.id, req.body.reason);
+    const { reason } = req.body;
+    const reservation = await reservationsService.cancel(req.params.id, reason);
     successResponse(res, reservation, 'Reservation cancelled');
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getTodayArrivals(req: Request, res: Response, next: NextFunction) {
+  try {
+    const propertyId = (req.query.propertyId as string) || req.user?.propertyId || '';
+    const arrivals = await reservationsService.getTodayArrivals(propertyId);
+    successResponse(res, arrivals);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getTodayDepartures(req: Request, res: Response, next: NextFunction) {
+  try {
+    const propertyId = (req.query.propertyId as string) || req.user?.propertyId || '';
+    const departures = await reservationsService.getTodayDepartures(propertyId);
+    successResponse(res, departures);
+  } catch (err) {
+    next(err);
   }
 }

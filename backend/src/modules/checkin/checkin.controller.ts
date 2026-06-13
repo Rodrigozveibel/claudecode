@@ -1,33 +1,33 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import * as checkinService from './checkin.service';
 import { successResponse } from '../../utils/response';
-import { AuthRequest } from '../../middleware/auth';
 
-export async function checkIn(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function checkIn(req: Request, res: Response, next: NextFunction) {
   try {
-    const { reservationId, roomId } = req.body;
-    const result = await checkinService.checkIn(reservationId, roomId, req.user!.id);
-    successResponse(res, result, 'Guest checked in successfully');
-  } catch (error) {
-    next(error);
+    const { reservationId } = req.body;
+    const result = await checkinService.checkIn(reservationId, req.user?.id || 'system');
+    successResponse(res, result, 'Check-in successful');
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function checkOut(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function checkOut(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = await checkinService.checkOut(req.params.reservationId, req.user!.id);
-    successResponse(res, result, 'Guest checked out successfully');
-  } catch (error) {
-    next(error);
+    const { reservationId } = req.body;
+    const result = await checkinService.checkOut(reservationId, req.user?.id || 'system');
+    successResponse(res, result, 'Check-out successful');
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function getCurrentGuests(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getCurrentGuests(req: Request, res: Response, next: NextFunction) {
   try {
-    const propertyId = req.query.propertyId as string || req.user?.propertyId!;
+    const propertyId = (req.query.propertyId as string) || req.user?.propertyId || '';
     const guests = await checkinService.getCurrentGuests(propertyId);
     successResponse(res, guests);
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 }

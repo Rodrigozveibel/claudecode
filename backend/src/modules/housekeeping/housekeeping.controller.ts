@@ -1,80 +1,72 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import * as housekeepingService from './housekeeping.service';
-import { successResponse, paginatedResponse } from '../../utils/response';
-import { AuthRequest } from '../../middleware/auth';
+import { successResponse } from '../../utils/response';
 import { HousekeepingTaskStatus } from '@prisma/client';
 
-export async function getTasks(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getTasks(req: Request, res: Response, next: NextFunction) {
   try {
-    const propertyId = req.query.propertyId as string | undefined || req.user?.propertyId;
-    const { items, total, page, limit } = await housekeepingService.getTasks(req, propertyId);
-    paginatedResponse(res, items, total, page, limit);
-  } catch (error) {
-    next(error);
+    const propertyId = (req.query.propertyId as string) || req.user?.propertyId || '';
+    const tasks = await housekeepingService.getTasks(propertyId, {
+      status: req.query.status as HousekeepingTaskStatus | undefined,
+      date: req.query.date as string | undefined,
+      assignedToId: req.query.assignedToId as string | undefined,
+      roomId: req.query.roomId as string | undefined,
+    });
+    successResponse(res, tasks);
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function createTask(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getTask(req: Request, res: Response, next: NextFunction) {
   try {
-    const propertyId = req.body.propertyId || req.user?.propertyId;
-    const task = await housekeepingService.createTask({ ...req.body, propertyId });
+    const task = await housekeepingService.getTask(req.params.id);
+    successResponse(res, task);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createTask(req: Request, res: Response, next: NextFunction) {
+  try {
+    const task = await housekeepingService.createTask(req.body);
     successResponse(res, task, 'Task created', 201);
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function updateTaskStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function updateTaskStatus(req: Request, res: Response, next: NextFunction) {
   try {
     const { status, notes } = req.body;
     const task = await housekeepingService.updateTaskStatus(
       req.params.id,
       status as HousekeepingTaskStatus,
-      notes,
-      req.user?.id
+      notes
     );
     successResponse(res, task, 'Task status updated');
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function assignTask(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function assignTask(req: Request, res: Response, next: NextFunction) {
   try {
-    const task = await housekeepingService.assignTask(req.params.id, req.body.assignedTo);
+    const { assignedToId } = req.body;
+    const task = await housekeepingService.assignTask(req.params.id, assignedToId);
     successResponse(res, task, 'Task assigned');
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function bulkAssignTasks(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getDailyReport(req: Request, res: Response, next: NextFunction) {
   try {
-    const { taskIds, assignedTo } = req.body;
-    const result = await housekeepingService.bulkAssignTasks(taskIds, assignedTo);
-    successResponse(res, result, `Assigned ${result.count} tasks`);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function inspectRoom(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const { passed, notes } = req.body;
-    const task = await housekeepingService.inspectRoom(req.params.id, req.user!.id, passed, notes);
-    successResponse(res, task, 'Inspection recorded');
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function getHousekeepingReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const propertyId = req.query.propertyId as string || req.user?.propertyId!;
+    const propertyId = (req.query.propertyId as string) || req.user?.propertyId || '';
     const date = req.query.date ? new Date(req.query.date as string) : new Date();
-    const report = await housekeepingService.getHousekeepingReport(propertyId, date);
+    const report = await housekeepingService.getDailyReport(propertyId, date);
     successResponse(res, report);
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 }
