@@ -23,3 +23,10 @@ Com narração, os slides se ajustam ao tempo do áudio e dá para gerar legenda
 - Vídeo HEVC do iPhone pode não abrir no Chrome do Windows. Grave em "Mais compatível".
 - A exportação leva o tempo do próprio vídeo.
 - Na primeira vez, a legenda automática baixa de 200 a 600 MB.
+
+## Roteiro com IA e teleprompter
+- **Escrever roteiro com IA:** escolha a área, o formato e o tema (ou clique em "Sugerir 10 temas"). Usa a API do Claude, com regras da OAB (Provimento 205/2021) no comando.
+  Precisa de uma chave da API da Anthropic (console.anthropic.com), que fica salva só no seu navegador. Cada roteiro custa poucos centavos.
+- **Teleprompter:** o texto rola perto da câmera e grava pelo navegador. Ao parar, o vídeo entra direto no editor.
+  `[Entre colchetes]` vira lembrete que não é para ler; `*entre asteriscos*` fica em destaque.
+- **Usar roteiro como legenda:** gera as legendas a partir do texto, com tempo aproximado.

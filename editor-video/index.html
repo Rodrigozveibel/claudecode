@@ -57,7 +57,7 @@ label{display:flex;flex-direction:column;gap:5px;font-weight:600;font-size:13px}
 label.row{flex-direction:row;align-items:center;gap:8px}
 .hint{font-weight:400;color:var(--muted);font-size:12px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-input[type=text],input[type=number],select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+input[type=text],input[type=password],input[type=number],select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
 textarea{resize:vertical;min-height:70px}
 input[type=range]{accent-color:var(--accent);width:100%}
 input[type=color]{width:44px;height:34px;border:1px solid var(--line);border-radius:8px;background:none;padding:2px}
@@ -136,8 +136,40 @@ a.dl{display:inline-block;font-weight:700;color:var(--accent)}
   <aside class="panel">
     <!-- 0. Teleprompter -->
     <details data-mode-show="video" hidden open>
-      <summary>Teleprompter</summary>
+      <summary>Roteiro e teleprompter</summary>
       <div class="body">
+        <details id="aiBox" open style="border-style:dashed">
+          <summary style="font-size:14px;padding:10px 12px">Escrever roteiro com IA</summary>
+          <div class="body" style="padding:0 12px 12px">
+            <div class="grid2">
+              <label>Área
+                <select id="aiArea"><option>Direito bancário</option><option>Direito do consumidor</option><option>Direito imobiliário</option><option>Execução e dívidas</option><option>Direito de família</option><option>Direito trabalhista</option><option>Direito previdenciário</option></select></label>
+              <label>Formato
+                <select id="aiFmt">
+                  <option value="educativo">Problema e resposta</option>
+                  <option value="mito">Mito ou verdade</option>
+                  <option value="erros">3 erros que…</option>
+                  <option value="pessoal">Pessoal / bastidores</option>
+                </select></label>
+            </div>
+            <label>Tema <input id="aiTopic" type="text" placeholder="Ex.: caí no golpe do PIX, e agora?"></label>
+            <div class="grid2">
+              <button id="aiIdeas" class="btn" type="button">Sugerir 10 temas</button>
+              <label class="row" style="font-weight:500">Duração
+                <select id="aiDur" style="width:auto"><option value="30">30 s</option><option value="45" selected>45 s</option><option value="60">60 s</option></select></label>
+            </div>
+            <div id="aiIdeaList" class="list" style="max-height:220px"></div>
+            <label>Anotações suas (opcional) <span class="hint">Fatos, impressões ou um caso real sem nomes. A IA usa as suas palavras.</span>
+              <textarea id="aiNotes" rows="3"></textarea></label>
+            <label>Chave da API da Anthropic <span class="hint">Crie em console.anthropic.com. Fica salva só neste navegador. Cada roteiro custa poucos centavos.</span>
+              <input id="aiKey" type="password" autocomplete="off" placeholder="sk-ant-..."></label>
+            <div class="grid2">
+              <button id="aiGen" class="btn primary" type="button">Gerar roteiro</button>
+              <button id="aiUndo" class="btn" type="button" hidden>Voltar ao anterior</button>
+            </div>
+            <div id="aiStatus" class="status"></div>
+          </div>
+        </details>
         <label>Roteiro <span class="hint">[Entre colchetes] vira lembrete pequeno, que não é para ler. *Entre asteriscos* fica em destaque.</span>
           <textarea id="tpScript" rows="9"></textarea></label>
         <div class="grid2">
@@ -1012,6 +1044,101 @@ $('#tpToCaps').onclick = () => {
   if (S.hasVideo) { S.words.video = distribute($('#manualText').value); buildChunks(); $('#tStatus').className = 'status ok'; $('#tStatus').textContent = 'Roteiro aplicado como legenda. O tempo é aproximado: para sincronizar certinho, use "Gerar legendas automáticas".'; }
   else { $('#tStatus').className = 'status warn'; $('#tStatus').textContent = 'Grave ou envie o vídeo primeiro. O roteiro já ficou na caixa "Cole o texto manualmente".'; }
 };
+
+/* ---------------- IA de roteiros (API do Claude) ---------------- */
+const AI_SYSTEM = `Você é roteirista de vídeos curtos (Reels e TikTok) para um advogado brasileiro. Escreve em português do Brasil falado: frases curtas, palavras simples, sem juridiquês, como o advogado explicaria no balcão do escritório.
+
+Regras da OAB (Provimento 205/2021 e Código de Ética), obrigatórias:
+- Conteúdo informativo e educativo, nunca mercantil.
+- Proibido: prometer resultado, "consulta grátis", preços, descontos, "o melhor advogado", citar valores ganhos, urgência agressiva ("processe já", "não perca seu dinheiro"), oferecer serviço diretamente a quem não pediu.
+- Chamadas permitidas: salvar o vídeo, mandar para alguém, seguir o perfil, comentar uma dúvida, "procure um advogado de sua confiança".
+
+Precisão jurídica:
+- Cite número de lei, artigo ou súmula apenas quando tiver certeza absoluta. Na dúvida, explique a regra sem o número.
+- Use "em regra" e "depende do caso" quando a resposta variar. Não invente prazos nem valores.
+
+Formato da resposta, sem nada antes nem depois:
+- Marcadores de seção sozinhos na linha, entre colchetes: [Gancho], [Resposta], [Explicação], [Chamada]. Para formatos pessoais, use [Gancho], [Contexto], [História], [Lição], [Chamada].
+- Uma ideia por linha. Linhas em branco entre seções.
+- Destaque de 1 a 3 expressões-chave com *asteriscos*.
+- O gancho tem no máximo 12 palavras e começa pela situação ou pela dor do espectador, nunca por "Olá" ou "Eu sou".
+- Respeite a duração pedida contando cerca de 2,5 palavras por segundo.`;
+const FMT = {
+  educativo: 'Problema e resposta: comece pela situação que a pessoa está vivendo, dê a resposta direta logo em seguida, depois 2 ou 3 orientações práticas.',
+  mito: 'Mito ou verdade: apresente uma crença comum sobre o tema, diga se é mito ou verdade e explique por quê.',
+  erros: '3 erros: liste 3 erros comuns que as pessoas cometem nessa situação e o que fazer no lugar de cada um.',
+  pessoal: 'Pessoal: relato em primeira pessoa do advogado, autêntico, com uma lição ou decisão no final. Use as anotações dele como base, mantendo as palavras dele.',
+};
+$('#aiKey').value = store.get('er-ai-key') || '';
+$('#aiKey').addEventListener('change', e => store.set('er-ai-key', e.target.value.trim()));
+async function askClaude(userText, maxTokens = 4000) {
+  const key = $('#aiKey').value.trim();
+  if (!key) throw new Error('Cole a sua chave da API da Anthropic no campo acima.');
+  store.set('er-ai-key', key);
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2026-10-21',
+      'anthropic-beta': 'server-side-fallback-2026-07-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-5-5',
+      max_tokens: maxTokens,
+      fallbacks: 'default',
+      output_config: { effort: 'medium' },
+      system: AI_SYSTEM,
+      messages: [{ role: 'user', content: userText }],
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = data?.error?.message || res.statusText;
+    if (res.status === 401) throw new Error('Chave inválida. Confira se copiou a chave inteira.');
+    if (res.status === 429) throw new Error('Limite de uso atingido. Espere um minuto e tente de novo.');
+    if (res.status === 400 && /credit/i.test(msg)) throw new Error('Sem crédito na conta da Anthropic. Adicione crédito em console.anthropic.com.');
+    throw new Error(msg);
+  }
+  if (data.stop_reason === 'refusal') throw new Error('A IA recusou este tema. Reformule o pedido.');
+  const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+  if (!text) throw new Error('A IA não devolveu texto. Tente de novo.');
+  return text;
+}
+async function aiRun(btn, fn) {
+  const st = $('#aiStatus'); btn.disabled = true; st.className = 'status'; st.textContent = 'Escrevendo…';
+  try { await fn(); } catch (e) { st.className = 'status warn'; st.textContent = e.message === 'Failed to fetch' ? 'Sem conexão com a API. Confira a internet.' : e.message; }
+  finally { btn.disabled = false; }
+}
+let prevScript = null;
+$('#aiGen').onclick = e => aiRun(e.currentTarget, async () => {
+  const topic = $('#aiTopic').value.trim(), notes = $('#aiNotes').value.trim(), fmt = $('#aiFmt').value;
+  if (!topic && !notes) throw new Error('Escreva um tema ou anotações, ou clique em "Sugerir 10 temas".');
+  const prompt = `Área: ${$('#aiArea').value}
+Tema: ${topic || '(definir a partir das anotações)'}
+Formato: ${FMT[fmt]}
+Duração: ${$('#aiDur').value} segundos.
+${notes ? `Anotações do advogado (use as palavras dele sempre que possível):\n${notes}` : ''}
+
+Escreva o roteiro.`;
+  const script = await askClaude(prompt);
+  prevScript = $('#tpScript').value;
+  $('#tpScript').value = script; store.set('er-script', script);
+  $('#aiUndo').hidden = false;
+  const st = $('#aiStatus'); st.className = 'status ok';
+  st.textContent = 'Roteiro pronto abaixo. Revise antes de gravar: confira leis, prazos e se soa como você.';
+});
+$('#aiUndo').onclick = () => { if (prevScript == null) return; $('#tpScript').value = prevScript; store.set('er-script', prevScript); prevScript = null; $('#aiUndo').hidden = true; };
+$('#aiIdeas').onclick = e => aiRun(e.currentTarget, async () => {
+  const txt = await askClaude(`Área: ${$('#aiArea').value}
+Liste 10 temas de vídeos curtos sobre dúvidas reais que as pessoas pesquisam no Google ou perguntam no WhatsApp sobre essa área. Escreva cada tema como a pergunta ou situação, do jeito que a pessoa falaria, com no máximo 12 palavras.
+Responda só com os 10 temas, um por linha, sem numeração, sem marcadores e sem colchetes.`, 2000);
+  const ideas = txt.split('\n').map(l => l.replace(/^[\s\-–•*\d.)]+/, '').trim()).filter(Boolean).slice(0, 10);
+  const box = $('#aiIdeaList'); box.innerHTML = '';
+  ideas.forEach(t => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.style.textAlign = 'left'; b.textContent = t; b.onclick = () => { $('#aiTopic').value = t; $('#aiTopic').focus(); }; box.appendChild(b); });
+  const st = $('#aiStatus'); st.className = 'status ok'; st.textContent = 'Clique num tema para usar.';
+});
 
 /* exemplo inicial para mostrar o resultado */
 S.slides = [
