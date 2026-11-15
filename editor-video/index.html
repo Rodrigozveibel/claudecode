@@ -87,7 +87,7 @@ a.dl{display:inline-block;font-weight:700;color:var(--accent)}
 @media (prefers-reduced-motion:reduce){.progress i{transition:none}}
 /* Teleprompter: tela cheia, texto no terço de cima (perto da lente), câmera atrás */
 .tp{position:fixed;inset:0;z-index:50;background:#000;color:#fff;overflow:hidden;touch-action:none}
-.tp video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:.55}
+.tp video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scaleX(-1);opacity:.6}
 .tp-view{position:absolute;left:0;right:0;top:0;height:50%;overflow:hidden;
   padding-top:env(safe-area-inset-top,0px);
   -webkit-mask-image:linear-gradient(transparent 0,#000 12%,#000 80%,transparent 100%);mask-image:linear-gradient(transparent 0,#000 12%,#000 80%,transparent 100%);
@@ -329,6 +329,7 @@ a.dl{display:inline-block;font-weight:700;color:var(--accent)}
     <button id="tpRec" type="button" class="rec">● Gravar</button>
     <span class="grp"><button id="tpSlow" type="button" aria-label="Mais devagar">−</button><span id="tpSpeedV" class="val"></span><button id="tpFast" type="button" aria-label="Mais rápido">+</button></span>
     <span class="grp"><button id="tpSmall" type="button" aria-label="Letra menor">A−</button><span id="tpFsV" class="val"></span><button id="tpBig" type="button" aria-label="Letra maior">A+</button></span>
+    <label id="tpZoomBox" class="grp" hidden style="color:#cfd2e0;font:600 12px var(--f-ui)">Zoom <input id="tpZoom" type="range" style="width:110px"></label>
     <button id="tpMirror" type="button" aria-pressed="false">Espelhar</button>
   </div>
 </div>
@@ -965,21 +966,37 @@ async function openTP() {
     tpNotice('A câmera só liga quando a página abre por um link https, no Chrome ou no Safari. Arquivo aberto direto no celular não libera a câmera.');
     return;
   }
-  const portrait = innerHeight > innerWidth;
+  // No celular, pedir 9:16 força o aparelho a recortar o sensor (fica com zoom).
+  // Lá pedimos só a câmera frontal e deixamos o enquadramento 9:16 para o editor.
+  const mobile = matchMedia('(pointer:coarse)').matches;
+  const video = mobile
+    ? { facingMode: 'user', width: { ideal: 1920 }, aspectRatio: { ideal: 4 / 3 }, frameRate: { ideal: 30 } }
+    : { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } };
   try {
     TP.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: portrait ? 1080 : 1920 }, height: { ideal: portrait ? 1920 : 1080 }, frameRate: { ideal: 30 } },
+      video,
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
     });
     if (!TP.open) { TP.stream.getTracks().forEach(t => t.stop()); return; }
     tpCam.srcObject = TP.stream; $('#tpRec').disabled = false;
     tpNotice('');
+    setupZoom(TP.stream.getVideoTracks()[0]);
   } catch (e) {
     $('#tpRec').disabled = true;
     tpNotice(e.name === 'NotAllowedError'
       ? 'Permissão da câmera negada. Libere a câmera e o microfone nas configurações do navegador para este site.'
       : 'Câmera indisponível neste aparelho. Dá para usar só o texto e gravar com o app da câmera.');
   }
+}
+// Câmeras que aceitam zoom (Chrome no Android): começa no mínimo e mostra o controle
+async function setupZoom(track) {
+  const box = $('#tpZoomBox'), z = $('#tpZoom'); box.hidden = true;
+  const caps = track?.getCapabilities?.();
+  if (!caps?.zoom || caps.zoom.max <= caps.zoom.min) return;
+  z.min = caps.zoom.min; z.max = caps.zoom.max; z.step = caps.zoom.step || 0.1; z.value = caps.zoom.min;
+  try { await track.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] }); } catch {}
+  z.oninput = () => track.applyConstraints({ advanced: [{ zoom: +z.value }] }).catch(() => {});
+  box.hidden = false;
 }
 function closeTP() {
   if (TP.rec) return stopRec(false);
