@@ -960,9 +960,15 @@ async function openTP() {
   tpEl.requestFullscreen?.().catch(() => {});
   navigator.wakeLock?.request('screen').then(l => TP.lock = l).catch(() => {});
   requestAnimationFrame(tpLoop);
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    $('#tpRec').disabled = true;
+    tpNotice('A câmera só liga quando a página abre por um link https, no Chrome ou no Safari. Arquivo aberto direto no celular não libera a câmera.');
+    return;
+  }
+  const portrait = innerHeight > innerWidth;
   try {
     TP.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
+      video: { facingMode: 'user', width: { ideal: portrait ? 1080 : 1920 }, height: { ideal: portrait ? 1920 : 1080 }, frameRate: { ideal: 30 } },
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
     });
     if (!TP.open) { TP.stream.getTracks().forEach(t => t.stop()); return; }
@@ -970,7 +976,9 @@ async function openTP() {
     tpNotice('');
   } catch (e) {
     $('#tpRec').disabled = true;
-    tpNotice('Câmera indisponível. Dá para usar só o texto e gravar em outro aparelho.');
+    tpNotice(e.name === 'NotAllowedError'
+      ? 'Permissão da câmera negada. Libere a câmera e o microfone nas configurações do navegador para este site.'
+      : 'Câmera indisponível neste aparelho. Dá para usar só o texto e gravar com o app da câmera.');
   }
 }
 function closeTP() {
