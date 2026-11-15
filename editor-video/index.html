@@ -279,6 +279,7 @@ a.dl{display:inline-block;font-weight:700;color:var(--accent)}
         </div>
         <div class="hint">Revise o texto abaixo. Edite e aperte Enter para salvar.</div>
         <div id="chunkList" class="list"></div>
+        <button id="clearCaps" class="btn" type="button">Apagar todas as legendas</button>
       </div>
     </details>
 
@@ -288,9 +289,9 @@ a.dl{display:inline-block;font-weight:700;color:var(--accent)}
       <div class="body">
         <label class="row">Cor da marca <input id="accent" type="color" value="#ffd400"></label>
         <label>Gancho no início <span class="hint">Aparece no topo nos primeiros segundos. É o que segura o scroll.</span>
-          <input id="hookText" type="text" value="3 erros que fazem você perder sua ação"></label>
+          <input id="hookText" type="text" placeholder="Ex.: Caiu no golpe do PIX? Faça isso agora"></label>
         <label>Duração do gancho (s) <input id="hookDur" type="number" min="1" max="15" step="0.5" value="3"></label>
-        <label>Chamada no final <input id="ctaText" type="text" value="Siga para mais dicas jurídicas"></label>
+        <label>Chamada no final <input id="ctaText" type="text" placeholder="Ex.: Siga para mais dicas"></label>
         <label>Duração da chamada (s) <input id="ctaDur" type="number" min="1" max="10" step="0.5" value="2.5"></label>
         <label>Logo <span class="hint">PNG com fundo transparente fica melhor.</span><input id="fLogo" type="file" accept="image/*"></label>
         <div class="grid2">
@@ -852,6 +853,7 @@ bindNum('#capSize', v => S.cap.size = +v); bindNum('#capY', v => S.cap.y = +v);
 bindNum('#capWords', v => { S.cap.n = clamp(Math.round(+v) || 3, 1, 8); buildChunks(); });
 bindNum('#capUpper', v => S.cap.upper = v, 'change');
 $('#transcribe').onclick = transcribe;
+$('#clearCaps').onclick = () => { S.words[S.mode] = []; buildChunks(); $('#manualText').value = ''; };
 $('#applyManual').onclick = () => { S.words[S.mode] = distribute($('#manualText').value); buildChunks(); };
 bindNum('#accent', v => S.accent = v);
 bindNum('#hookText', v => S.hook.text = v); bindNum('#hookDur', v => S.hook.dur = +v || 3);
@@ -1166,12 +1168,7 @@ Responda só com os 10 temas, um por linha, sem numeração, sem marcadores e se
 });
 
 /* exemplo inicial para mostrar o resultado */
-S.slides = [
-  { img: null, text: 'Você foi *demitido* e não recebeu tudo?', dur: 3 },
-  { img: null, text: 'Erro 1: assinar a rescisão *sem conferir* as verbas', dur: 3 },
-  { img: null, text: 'Erro 2: deixar passar o prazo de *2 anos*', dur: 3 },
-  { img: null, text: 'Erro 3: não guardar *provas* das horas extras', dur: 3 },
-];
+S.slides = [];
 S.hook.text = $('#hookText').value; S.cta.text = $('#ctaText').value;
 renderSlides(); setMode('video');
 document.fonts.load('900 80px Montserrat').then(() => document.fonts.load('400 80px Anton')).catch(() => {});
