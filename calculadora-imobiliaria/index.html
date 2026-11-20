@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora Imobiliária</title>
+<meta name="description" content="Simule quanto você pode receber da construtora por atraso na entrega da obra ou no distrato do seu imóvel na planta.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+/* ===================== TEMA ===================== */
+:root{
+  --bg:#f5f3ee; --surface:#ffffff; --surface-2:#faf8f4; --ink:#14213d; --ink-2:#47506a; --muted:#7a8196;
+  --line:#e3dfd6; --brand:#14213d; --brand-ink:#ffffff; --accent:#b8892e; --accent-soft:#f4ead6;
+  --good:#1f7a4d; --good-soft:#e3f2ea; --bad:#b4372f; --bad-soft:#f8e5e3; --warn:#9a6a00; --warn-soft:#fbf1d9;
+  --shadow:0 1px 2px rgba(20,33,61,.06),0 8px 24px rgba(20,33,61,.07); --r:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1424; --surface:#151d31; --surface-2:#1a2339; --ink:#eef1f8; --ink-2:#c3c9d8; --muted:#8d95ab;
+    --line:#29334d; --brand:#e9c46a; --brand-ink:#14213d; --accent:#e0b457; --accent-soft:#2c2918;
+    --good:#5fd196; --good-soft:#15301f; --bad:#ff8a80; --bad-soft:#3a1b1b; --warn:#f0c35a; --warn-soft:#352b12;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1424; --surface:#151d31; --surface-2:#1a2339; --ink:#eef1f8; --ink-2:#c3c9d8; --muted:#8d95ab;
+  --line:#29334d; --brand:#e9c46a; --brand-ink:#14213d; --accent:#e0b457; --accent-soft:#2c2918;
+  --good:#5fd196; --good-soft:#15301f; --bad:#ff8a80; --bad-soft:#3a1b1b; --warn:#f0c35a; --warn-soft:#352b12;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;letter-spacing:-.01em;margin:0}
+a{color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+button{font:inherit;cursor:pointer}
+
+/* topo */
+.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.top .wrap{display:flex;align-items:center;gap:12px;height:62px}
+.logo{width:38px;height:38px;border-radius:10px;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-weight:800;font-size:14px;letter-spacing:.5px}
+.firm{line-height:1.15}
+.firm b{display:block;font-size:15px}
+.firm span{font-size:12px;color:var(--muted)}
+.top .sp{flex:1}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.btn.wa{background:#1fa855;color:#fff;border-color:#1fa855}
+.btn.wa:hover{filter:brightness(1.05)}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn.ghost{background:transparent}
+.icon{width:16px;height:16px;flex:none}
+
+/* hero */
+.hero{padding:44px 0 26px}
+.eyebrow{display:inline-block;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px}
+.hero h1{font-size:clamp(28px,4.4vw,46px);line-height:1.08;margin:14px 0 12px;max-width:820px}
+.hero p{color:var(--ink-2);font-size:17px;max-width:720px;margin:0}
+.proof{display:flex;flex-wrap:wrap;gap:18px;margin-top:20px;color:var(--ink-2);font-size:14px}
+.proof span{display:inline-flex;gap:7px;align-items:center}
+.proof svg{color:var(--good)}
+
+/* abas */
+.tabs{display:flex;gap:8px;margin:8px 0 18px;flex-wrap:wrap}
+.tab{flex:1;min-width:220px;text-align:left;border:1.5px solid var(--line);background:var(--surface);border-radius:var(--r);padding:14px 16px;color:var(--ink)}
+.tab b{display:block;font-size:16px}
+.tab span{font-size:13px;color:var(--muted)}
+.tab[aria-selected="true"]{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+
+/* grid */
+.grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:20px;align-items:start;padding-bottom:40px}
+@media (max-width:920px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card .hd{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.card .hd h3{font-size:18px}
+.card .bd{padding:18px}
+.step{width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+.sec+.sec{margin-top:22px;padding-top:20px;border-top:1px dashed var(--line)}
+.sec-t{font-weight:700;font-size:14px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+@media (max-width:560px){.fields{grid-template-columns:minmax(0,1fr)}}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f.full{grid-column:1/-1}
+.f label{font-size:13px;font-weight:600;color:var(--ink-2)}
+.f small{font-size:12px;color:var(--muted)}
+input,select{font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-width:0}
+input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.money{position:relative}
+.money input{padding-left:38px}
+.money:before{content:"R$";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;font-weight:600}
+.pct{position:relative}
+.pct input{padding-right:34px}
+.pct:after{content:"%";position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:600}
+.seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1 1 0;min-width:0;line-height:1.25;border:0;background:transparent;border-radius:8px;padding:8px 6px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink-2);cursor:pointer}
+.chk input{width:18px;height:18px;margin-top:2px;flex:none;accent-color:var(--accent)}
+.hint{font-size:12.5px;color:var(--muted);margin-top:6px}
+
+/* pagamentos */
+.pay-tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.gen{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.gen .fields{grid-template-columns:repeat(4,1fr)}
+@media (max-width:640px){.gen .fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.paylist{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.paylist table{width:100%;border-collapse:collapse;font-size:13.5px}
+.paylist th{position:sticky;top:0;background:var(--surface-2);text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line)}
+.paylist td{padding:4px 6px;border-bottom:1px solid var(--line)}
+.paylist td input{padding:6px 8px;border-radius:8px;background:transparent;border-color:transparent}
+.paylist td input:hover{border-color:var(--line)}
+.paylist .x{border:0;background:transparent;color:var(--muted);padding:6px;border-radius:6px}
+.paylist .x:hover{color:var(--bad);background:var(--bad-soft)}
+.paysum{display:flex;justify-content:space-between;font-size:13px;color:var(--ink-2);margin-top:8px}
+.empty{padding:18px;text-align:center;color:var(--muted);font-size:13.5px}
+
+/* resultado */
+.result{position:sticky;top:78px}
+@media (max-width:920px){.result{position:static}}
+.big{padding:22px 20px;background:var(--brand);color:var(--brand-ink);border-radius:var(--r) var(--r) 0 0}
+.big .lbl{font-size:13px;opacity:.8;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.big .val{font-family:Fraunces,Georgia,serif;font-size:clamp(30px,4.6vw,44px);font-weight:700;line-height:1.1;margin:6px 0 4px;font-variant-numeric:tabular-nums}
+.big .sub{font-size:14px;opacity:.85}
+.kpis{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line)}
+.kpi{padding:14px 18px}
+.kpi+.kpi{border-left:1px solid var(--line)}
+.kpi .l{font-size:12px;color:var(--muted);font-weight:600}
+.kpi .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.kpi.good .v{color:var(--good)} .kpi.bad .v{color:var(--bad)}
+.lines{padding:6px 18px 12px}
+.line{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.line:last-child{border-bottom:0}
+.line .n{color:var(--ink-2)}
+.line .n small{display:block;color:var(--muted);font-size:12px}
+.line .a{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.line.neg .a{color:var(--bad)} .line.pos .a{color:var(--good)}
+.line.tot{font-weight:700;font-size:15px;border-top:2px solid var(--ink);margin-top:4px}
+.line.dim{opacity:.55}
+.bars{padding:14px 18px 6px}
+.bar{margin-bottom:12px}
+.bar .t{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+.bar .t b{font-variant-numeric:tabular-nums}
+.bar .tr{height:12px;background:var(--surface-2);border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.bar .fl{height:100%;border-radius:6px;transition:width .5s ease}
+.note{margin:0 18px 14px;padding:12px 14px;border-radius:10px;font-size:13.5px;line-height:1.45}
+.note.good{background:var(--good-soft);color:var(--good)}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.bad{background:var(--bad-soft);color:var(--bad)}
+.note b{font-weight:700}
+.cta{padding:16px 18px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.cta .btn{justify-content:center;padding:13px 14px;font-size:15px}
+.cta .row{display:flex;gap:8px}
+.cta .row .btn{flex:1;font-size:13.5px;padding:10px}
+.basis{padding:0 18px 16px;font-size:12.5px;color:var(--muted)}
+.basis b{color:var(--ink-2)}
+details.memo{border-top:1px solid var(--line)}
+details.memo summary{padding:13px 18px;cursor:pointer;font-weight:600;font-size:14px;list-style:none;display:flex;justify-content:space-between}
+details.memo summary:after{content:"+";color:var(--muted)}
+details.memo[open] summary:after{content:"–"}
+.memo-body{padding:0 18px 16px;overflow:auto}
+.memo-body table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+.memo-body th,.memo-body td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.memo-body th:first-child,.memo-body td:first-child{text-align:left}
+.memo-body th{color:var(--muted);font-weight:600}
+
+/* faq / rodapé */
+.faq{padding:10px 0 40px}
+.faq h2{font-size:26px;margin-bottom:14px}
+.faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.faq-grid{grid-template-columns:1fr}}
+.faq .card{padding:16px 18px}
+.faq h3{font-size:16px;margin-bottom:6px;font-family:Inter,sans-serif;font-weight:700}
+.faq p{margin:0;color:var(--ink-2);font-size:14px}
+footer{border-top:1px solid var(--line);padding:22px 0 40px;color:var(--muted);font-size:12.5px}
+.idxinfo{display:inline-flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--good)}
+
+/* modo reunião */
+.client-bar{display:none;background:var(--accent-soft);border-bottom:1px solid var(--line)}
+.client-bar .wrap{display:flex;gap:12px;align-items:center;padding-top:10px;padding-bottom:10px;flex-wrap:wrap}
+.client-bar input{max-width:320px;background:var(--surface)}
+body.meeting .client-bar{display:block}
+body.meeting .hero,body.meeting .faq,body.meeting .lp-only{display:none}
+body.meeting{font-size:16.5px}
+body.meeting .big .val{font-size:clamp(36px,5.4vw,56px)}
+body.meeting .tabs{margin-top:18px}
+.print-head{display:none}
+.mbar{display:none}
+@media (max-width:920px){
+  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--brand);color:var(--brand-ink);padding:10px 16px;gap:12px;align-items:center;box-shadow:0 -6px 20px rgba(0,0,0,.18)}
+  .mbar .l{font-size:11px;opacity:.8;text-transform:uppercase;letter-spacing:.05em}
+  .mbar .v{font-weight:800;font-size:17px;font-variant-numeric:tabular-nums}
+  .mbar button{margin-left:auto;background:var(--accent);color:#14213d;border:0;border-radius:10px;padding:10px 14px;font-weight:700}
+  body{padding-bottom:70px}
+}
+@media print{.mbar{display:none!important}}
+
+@media print{
+  @page{margin:14mm}
+  body{background:#fff;color:#000;font-size:11.5px}
+  .top,.hero,.tabs,.faq,.cta,.client-bar,.pay-tools,.gen,.no-print,.lp-only{display:none!important}
+  .print-head{display:block;margin-bottom:12px;border-bottom:2px solid #14213d;padding-bottom:8px}
+  .print-head h2{font-size:20px}
+  .grid{display:block}
+  .card{box-shadow:none;border:1px solid #ccc;break-inside:avoid;margin-bottom:10px}
+  .result{position:static}
+  .big{background:#14213d!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  details.memo .memo-body{display:block}
+  .paylist{max-height:none}
+  input,select{border:0;background:transparent;padding:2px 0}
+  .panel-hidden{display:none!important}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="logo" id="logo">RZ</div>
+    <div class="firm"><b id="firmName">Escritório</b><span id="firmSub">Direito Imobiliário</span></div>
+    <div class="sp"></div>
+    <button class="btn ghost sm" id="themeBtn" title="Alternar tema claro/escuro" aria-label="Alternar tema">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+    <button class="btn sm" id="meetingBtn" title="Modo apresentação para reunião">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      <span>Modo reunião</span>
+    </button>
+  </div>
+</header>
+
+<div class="client-bar">
+  <div class="wrap">
+    <b>Atendimento:</b>
+    <input id="clientName" placeholder="Nome do cliente">
+    <input id="clientRef" placeholder="Empreendimento / unidade">
+    <span class="sp" style="flex:1"></span>
+    <button class="btn sm" id="clearBtn">Novo cliente</button>
+  </div>
+</div>
+
+<main class="wrap">
+  <section class="hero">
+    <span class="eyebrow">Simulador gratuito</span>
+    <h1>Comprou na planta? Descubra quanto a construtora pode ter que te pagar.</h1>
+    <p>Atraso na entrega das chaves ou desistência do imóvel: simule em 2 minutos a indenização e a devolução corrigida a que você pode ter direito, com índices oficiais do Banco Central.</p>
+    <div class="proof">
+      <span><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>Baseado na Lei 13.786/2018 e no STJ</span>
+      <span><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>IPCA, INCC e IGP-M oficiais</span>
+      <span><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>Sem cadastro para simular</span>
+    </div>
+  </section>
+
+  <div class="print-head">
+    <h2>Simulação — <span id="phTitle"></span></h2>
+    <div id="phMeta"></div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="atraso" aria-selected="true"><b>Atraso na entrega da obra</b><span>Lucros cessantes, multas e danos morais</span></button>
+    <button class="tab" role="tab" data-tab="distrato" aria-selected="false"><b>Distrato / desistência</b><span>Quanto você recebe de volta, corrigido</span></button>
+  </div>
+
+  <!-- ===================== ATRASO ===================== -->
+  <section class="grid panel" id="panel-atraso">
+    <div class="card">
+      <div class="hd"><div class="step">1</div><h3>Dados do contrato e da obra</h3></div>
+      <div class="bd">
+        <div class="sec">
+          <div class="fields">
+            <div class="f"><label for="a_valor">Valor do imóvel no contrato</label><div class="money"><input id="a_valor" inputmode="decimal" data-money value="450.000,00"></div></div>
+            <div class="f"><label for="a_dataContrato">Data da assinatura</label><input type="date" id="a_dataContrato" value="2021-03-10"></div>
+            <div class="f"><label for="a_prevista">Data prevista de entrega</label><input type="date" id="a_prevista" value="2024-06-30"></div>
+            <div class="f"><label>As chaves já foram entregues?</label>
+              <div class="seg" data-seg="a_entregue"><button type="button" data-v="nao" aria-pressed="true">Ainda não</button><button type="button" data-v="sim" aria-pressed="false">Sim</button></div>
+            </div>
+            <div class="f" id="a_entregaWrap" hidden><label for="a_entrega">Data da entrega das chaves</label><input type="date" id="a_entrega"></div>
+            <div class="f full"><label class="chk"><input type="checkbox" id="a_tol" checked> <span>O contrato tem cláusula de tolerância de 180 dias <small style="display:block">É a regra na maioria dos contratos e é válida (art. 43-A, Lei 4.591/64). O atraso indenizável começa depois dela.</small></span></label></div>
+          </div>
+        </div>
+        <div class="sec">
+          <p class="sec-t">Indenização pelo período sem o imóvel</p>
+          <div class="fields">
+            <div class="f"><label for="a_pmin">Aluguel presumido (cenário conservador)</label><div class="pct"><input id="a_pmin" inputmode="decimal" value="0,5"></div><small>% ao mês do valor do imóvel</small></div>
+            <div class="f"><label for="a_pmax">Aluguel presumido (cenário favorável)</label><div class="pct"><input id="a_pmax" inputmode="decimal" value="1,0"></div><small>Tribunais costumam fixar entre 0,5% e 1%</small></div>
+            <div class="f"><label for="a_multa">Multa contratual para a construtora (se houver)</label><div class="pct"><input id="a_multa" inputmode="decimal" value="0"></div><small>% ao mês previsto no contrato</small></div>
+            <div class="f"><label for="a_multaBase">Base da multa contratual</label><select id="a_multaBase"><option value="contrato">Sobre o valor do imóvel</option><option value="pago">Sobre o valor pago</option></select></div>
+          </div>
+        </div>
+        <div class="sec">
+          <p class="sec-t">Outros valores</p>
+          <div class="fields">
+            <div class="f"><label for="a_despesas">Condomínio/IPTU pagos antes das chaves</label><div class="money"><input id="a_despesas" inputmode="decimal" data-money value="0,00"></div><small>Cobrança indevida antes da posse — devolução</small></div>
+            <div class="f"><label for="a_saldo">Saldo devedor na data prevista</label><div class="money"><input id="a_saldo" inputmode="decimal" data-money value="0,00"></div><small>Para calcular o INCC cobrado a mais no atraso</small></div>
+            <div class="f"><label for="a_idxSaldo">Índice de correção do saldo</label><select id="a_idxSaldo"><option value="incc">INCC-DI (FGV)</option><option value="inccm">INCC-M (FGV)</option><option value="igpm">IGP-M (FGV)</option></select></div>
+            <div class="f"><label for="a_dm">Danos morais (estimativa)</label><div class="money"><input id="a_dm" inputmode="decimal" data-money value="10.000,00"></div><small>Só entra no cenário favorável</small></div>
+          </div>
+        </div>
+        <div class="sec">
+          <p class="sec-t"><span class="step" style="width:22px;height:22px;font-size:12px">2</span>Pagamentos feitos à construtora <span style="font-weight:400;color:var(--muted)">(opcional)</span></p>
+          <div class="pay" data-pay="a"></div>
+        </div>
+        <div class="sec">
+          <p class="sec-t">Atualização</p>
+          <div class="fields">
+            <div class="f"><label for="a_calc">Calcular até</label><input type="date" id="a_calc"></div>
+            <div class="f"><label for="a_idx">Índice de correção</label><select id="a_idx"><option value="ipca">IPCA (IBGE)</option><option value="igpm">IGP-M (FGV)</option><option value="incc">INCC-DI (FGV)</option></select></div>
+            <div class="f full"><label class="chk"><input type="checkbox" id="a_jur"> Incluir juros de mora a partir de <input type="date" id="a_jurData" style="width:auto;padding:4px 8px;margin-left:4px"></label><small>Normalmente desde a citação. Até 08/2024: 1% a.m.; depois, taxa legal (Selic − IPCA, Lei 14.905/24).</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="card result" id="res-atraso"></aside>
+  </section>
+
+  <!-- ===================== DISTRATO ===================== -->
+  <section class="grid panel panel-hidden" id="panel-distrato" hidden>
+    <div class="card">
+      <div class="hd"><div class="step">1</div><h3>Dados do contrato</h3></div>
+      <div class="bd">
+        <div class="sec">
+          <div class="fields">
+            <div class="f"><label for="d_valor">Valor do imóvel no contrato</label><div class="money"><input id="d_valor" inputmode="decimal" data-money value="380.000,00"></div></div>
+            <div class="f"><label for="d_dataContrato">Data da assinatura</label><input type="date" id="d_dataContrato" value="2020-08-15"></div>
+            <div class="f full"><label>Tipo de empreendimento</label>
+              <div class="seg" data-seg="d_regime">
+                <button type="button" data-v="afetacao" aria-pressed="false">Prédio c/ patrimônio de afetação</button>
+                <button type="button" data-v="incorp" aria-pressed="true">Prédio sem afetação</button>
+                <button type="button" data-v="lote" aria-pressed="false">Loteamento</button>
+              </div>
+              <small id="d_regimeHint">Não sabe? Consta no contrato ou na matrícula ("patrimônio de afetação"). Na dúvida, use "sem afetação".</small>
+            </div>
+            <div class="f full"><label>Por que o contrato está sendo desfeito?</label>
+              <div class="seg" data-seg="d_motivo">
+                <button type="button" data-v="comprador" aria-pressed="true">Eu desisti / não consigo pagar</button>
+                <button type="button" data-v="construtora" aria-pressed="false">Culpa da construtora (atraso, vícios…)</button>
+              </div>
+            </div>
+            <div class="f"><label for="d_retCont">Retenção prevista no seu contrato</label><div class="pct"><input id="d_retCont" inputmode="decimal" value="25"></div><small>O que a construtora diz que vai ficar</small></div>
+            <div class="f"><label for="d_retBase">Retenção calculada sobre</label><select id="d_retBase"><option value="pago">Valores pagos</option><option value="contrato">Valor do contrato</option></select></div>
+          </div>
+        </div>
+        <div class="sec">
+          <p class="sec-t">Corretagem e posse</p>
+          <div class="fields">
+            <div class="f"><label for="d_corr">Comissão de corretagem paga por você</label><div class="money"><input id="d_corr" inputmode="decimal" data-money value="0,00"></div><small>Paga à parte, fora das parcelas</small></div>
+            <div class="f"><label for="d_corrData">Data do pagamento da corretagem</label><input type="date" id="d_corrData"></div>
+            <div class="f full"><label class="chk"><input type="checkbox" id="d_corrInfo"> <span>A corretagem <b>não</b> foi informada de forma clara e destacada antes da assinatura <small style="display:block">Nesse caso pode ser devolvida (STJ, Tema 938). Prazo: 3 anos do pagamento.</small></span></label></div>
+            <div class="f"><label for="d_posse">Meses em que você teve a posse do imóvel</label><input id="d_posse" inputmode="numeric" value="0"><small>Gera taxa de fruição. Deixe 0 se nunca morou.</small></div>
+            <div class="f"><label for="d_fru">Taxa de fruição</label><div class="pct"><input id="d_fru" inputmode="decimal" value="0,5"></div><small>% ao mês do valor do contrato</small></div>
+          </div>
+        </div>
+        <div class="sec">
+          <p class="sec-t"><span class="step" style="width:22px;height:22px;font-size:12px">2</span>Tudo o que você já pagou</p>
+          <div class="pay" data-pay="d"></div>
+        </div>
+        <div class="sec">
+          <p class="sec-t">Atualização</p>
+          <div class="fields">
+            <div class="f"><label for="d_calc">Calcular até</label><input type="date" id="d_calc"></div>
+            <div class="f"><label for="d_idx">Índice de correção</label><select id="d_idx"><option value="ipca">IPCA (IBGE)</option><option value="incc">INCC-DI (FGV)</option><option value="inccm">INCC-M (FGV)</option><option value="igpm">IGP-M (FGV)</option></select><small>Use o índice do contrato se preferir</small></div>
+            <div class="f full"><label class="chk"><input type="checkbox" id="d_jur"> Incluir juros de mora a partir de <input type="date" id="d_jurData" style="width:auto;padding:4px 8px;margin-left:4px"></label><small>Até 08/2024: 1% a.m.; depois, taxa legal (Selic − IPCA, Lei 14.905/24).</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="card result" id="res-distrato"></aside>
+  </section>
+
+  <section class="faq lp-only">
+    <h2>Perguntas frequentes</h2>
+    <div class="faq-grid">
+      <div class="card"><h3>A construtora atrasou. Tenho direito a quê?</h3><p>Passado o prazo de tolerância (até 180 dias), o STJ presume o prejuízo: você recebe um valor mensal equivalente ao aluguel do imóvel (Tema 996), normalmente entre 0,5% e 1% do valor do imóvel por mês, corrigido. Em atrasos longos, também pode haver danos morais.</p></div>
+      <div class="card"><h3>Posso desistir e receber tudo de volta?</h3><p>Se a culpa é da construtora (atraso além da tolerância, vícios graves), a devolução é integral, corrigida e de uma só vez (Súmula 543 do STJ). Se você desistiu, a construtora pode reter uma parte — mas há limites legais e muitas cláusulas são reduzidas na Justiça.</p></div>
+      <div class="card"><h3>A construtora pode ficar com 50% do que paguei?</h3><p>Só em contratos assinados a partir de 28/12/2018 e com patrimônio de afetação. Nos demais, o teto é 25%. Em contratos anteriores à Lei do Distrato, o STJ costuma fixar a retenção entre 10% e 25%.</p></div>
+      <div class="card"><h3>Este cálculo é definitivo?</h3><p>Não. É uma estimativa com base na lei, em índices oficiais e no entendimento predominante dos tribunais. O valor real depende da análise do seu contrato e dos comprovantes — por isso a avaliação de um advogado é essencial.</p></div>
+    </div>
+  </section>
+</main>
+
+<div class="mbar no-print" id="mbar" hidden><div><div class="l" id="mbarL">Sua estimativa</div><div class="v" id="mbarV">—</div></div><button type="button" id="mbarGo">Ver detalhes</button></div>
+<footer>
+  <div class="wrap">
+    <p><span class="idxinfo"><span class="dot" id="idxDot"></span><span id="idxInfo">Índices oficiais: BCB/SGS</span></span></p>
+    <p>Simulação meramente estimativa, sem valor de parecer jurídico ou laudo pericial, e não constitui promessa de resultado. Valores reais dependem da análise do contrato, dos comprovantes de pagamento e do entendimento do juízo. Fontes: Lei 4.591/64 (arts. 43-A e 67-A), Lei 6.766/79 (art. 32-A), Lei 13.786/2018, CDC, Código Civil (arts. 402, 406 e 413), Lei 14.905/2024, Súmula 543/STJ e Temas 938, 970, 971 e 996/STJ.</p>
+    <p id="footFirm"></p>
+  </div>
+</footer>
+
+<script>
+/* =====================================================================
+   CONFIGURAÇÃO DO ESCRITÓRIO — edite aqui
+   ===================================================================== */
+const CONFIG = {
+  escritorio: "Seu Escritório de Advocacia",
+  subtitulo: "Direito Imobiliário",
+  oab: "OAB/UF 00.000",
+  logo: "RZ",                    // 2-3 letras exibidas no topo
+  whatsapp: "5500000000000",     // DDI+DDD+número, só dígitos
+  webhookLeads: "",              // opcional: URL que recebe POST JSON a cada clique no WhatsApp (CRM, Zapier, Make, n8n)
+  atualizarIndicesOnline: true   // busca os índices mais recentes no Banco Central ao abrir
+};
+
+/* Índices mensais (% a.m.) — fonte: Banco Central / SGS. Séries: IPCA 433, INCC-DI 192, INCC-M 7456, IGP-M 189, Selic 4390 */
+const IDX = {"start":"2010-01","ipca":[0.75,0.78,0.52,0.57,0.43,0.0,0.01,0.04,0.45,0.75,0.83,0.63,0.83,0.8,0.79,0.77,0.47,0.15,0.16,0.37,0.53,0.43,0.52,0.5,0.56,0.45,0.21,0.64,0.36,0.08,0.43,0.41,0.57,0.59,0.6,0.79,0.86,0.6,0.47,0.55,0.37,0.26,0.03,0.24,0.35,0.57,0.54,0.92,0.55,0.69,0.92,0.67,0.46,0.4,0.01,0.25,0.57,0.42,0.51,0.78,1.24,1.22,1.32,0.71,0.74,0.79,0.62,0.22,0.54,0.82,1.01,0.96,1.27,0.9,0.43,0.61,0.78,0.35,0.52,0.44,0.08,0.26,0.18,0.3,0.38,0.33,0.25,0.14,0.31,-0.23,0.24,0.19,0.16,0.42,0.28,0.44,0.29,0.32,0.09,0.22,0.4,1.26,0.33,-0.09,0.48,0.45,-0.21,0.15,0.32,0.43,0.75,0.57,0.13,0.01,0.19,0.11,-0.04,0.1,0.51,1.15,0.21,0.25,0.07,-0.31,-0.38,0.26,0.36,0.24,0.64,0.86,0.89,1.35,0.25,0.86,0.93,0.31,0.83,0.53,0.96,0.87,1.16,1.25,0.95,0.73,0.54,1.01,1.62,1.06,0.47,0.67,-0.68,-0.36,-0.29,0.59,0.41,0.62,0.53,0.84,0.71,0.61,0.23,-0.08,0.12,0.23,0.26,0.24,0.28,0.56,0.42,0.83,0.16,0.38,0.46,0.21,0.38,-0.02,0.44,0.56,0.39,0.52,0.16,1.31,0.56,0.43,0.26,0.24,0.26,-0.11,0.48,0.09,0.18,0.33,0.33,0.7,0.88,0.67,0.58,0.16,0.07,-0.32,0.82,0.14],"incc":[0.64,0.36,0.75,0.84,1.81,1.09,0.44,0.14,0.21,0.2,0.37,0.67,0.41,0.28,0.43,1.06,2.94,0.37,0.45,0.13,0.14,0.23,0.72,0.11,0.89,0.3,0.51,0.75,1.88,0.73,0.67,0.26,0.22,0.21,0.33,0.16,0.65,0.6,0.5,0.74,2.25,1.15,0.48,0.31,0.43,0.26,0.35,0.1,0.88,0.33,0.28,0.88,2.05,0.66,0.75,0.08,0.15,0.17,0.44,0.08,0.92,0.31,0.62,0.46,0.95,1.84,0.55,0.59,0.22,0.36,0.34,0.1,0.39,0.54,0.64,0.55,0.08,1.93,0.49,0.29,0.33,0.21,0.16,0.34,0.41,0.65,0.16,-0.02,0.63,0.93,0.3,0.36,0.06,0.31,0.31,0.07,0.31,0.13,0.24,0.29,0.23,0.97,0.61,0.15,0.23,0.35,0.13,0.13,0.49,0.09,0.31,0.38,0.03,0.88,0.58,0.42,0.46,0.18,0.04,0.21,0.38,0.33,0.26,0.22,0.2,0.34,1.17,0.72,1.16,1.73,1.28,0.7,0.89,1.89,1.3,0.9,2.22,2.16,0.85,0.46,0.51,0.86,0.67,0.35,0.71,0.38,0.86,0.95,2.28,2.14,0.86,0.09,0.09,0.12,0.36,0.09,0.46,0.05,0.3,0.14,0.59,0.71,0.1,0.17,0.34,0.2,0.07,0.31,0.27,0.13,0.28,0.52,0.86,0.71,0.72,0.7,0.58,0.68,0.4,0.5,0.83,0.4,0.39,0.52,0.58,0.69,0.91,0.52,0.17,0.3,0.27,0.21,0.72,0.28,0.54,1.0,0.88,0.78,0.61,0.66,0.22,0.37],"inccm":[0.52,0.35,0.45,1.17,0.93,1.77,0.62,0.22,0.2,0.15,0.36,0.59,0.37,0.39,0.44,0.75,2.03,1.43,0.59,0.16,0.14,0.2,0.5,0.35,0.67,0.42,0.37,0.83,1.3,1.31,0.85,0.32,0.21,0.24,0.23,0.29,0.39,0.8,0.28,0.84,1.24,1.96,0.73,0.31,0.43,0.33,0.27,0.22,0.7,0.44,0.22,0.67,1.37,1.25,0.8,0.19,0.16,0.2,0.3,0.25,0.7,0.5,0.36,0.65,0.45,1.87,0.66,0.8,0.22,0.27,0.4,0.12,0.32,0.52,0.79,0.41,0.19,1.52,1.09,0.26,0.37,0.17,0.17,0.36,0.29,0.53,0.36,-0.08,0.13,1.36,0.22,0.4,0.14,0.19,0.28,0.14,0.28,0.14,0.23,0.28,0.3,0.76,0.72,0.3,0.17,0.33,0.26,0.13,0.4,0.19,0.19,0.49,0.09,0.44,0.91,0.34,0.6,0.12,0.15,0.14,0.26,0.35,0.38,0.18,0.21,0.32,0.84,0.82,1.15,1.69,1.29,0.88,0.93,1.07,2.0,0.95,1.8,2.3,1.24,0.56,0.56,0.8,0.71,0.3,0.64,0.48,0.73,0.87,1.49,2.81,1.16,0.33,0.1,0.04,0.14,0.27,0.32,0.21,0.18,0.23,0.4,0.85,0.06,0.24,0.24,0.2,0.1,0.26,0.23,0.2,0.24,0.41,0.59,0.93,0.69,0.64,0.61,0.67,0.44,0.51,0.71,0.51,0.38,0.59,0.26,0.96,0.91,0.7,0.21,0.21,0.28,0.21,0.63,0.34,0.36,1.04,0.77,0.85,0.62,0.85,0.25,0.35],"igpm":[0.63,1.18,0.94,0.77,1.19,0.85,0.15,0.77,1.15,1.01,1.45,0.69,0.79,1.0,0.62,0.45,0.43,-0.18,-0.12,0.44,0.65,0.53,0.5,-0.12,0.25,-0.06,0.43,0.85,1.02,0.66,1.34,1.43,0.97,0.02,-0.03,0.68,0.34,0.29,0.21,0.15,0.0,0.75,0.26,0.15,1.5,0.86,0.29,0.6,0.48,0.38,1.67,0.78,-0.13,-0.74,-0.61,-0.27,0.2,0.28,0.98,0.62,0.76,0.27,0.98,1.17,0.41,0.67,0.69,0.28,0.95,1.89,1.52,0.49,1.14,1.29,0.51,0.33,0.82,1.69,0.18,0.15,0.2,0.16,-0.03,0.54,0.64,0.08,0.01,-1.1,-0.93,-0.67,-0.72,0.1,0.47,0.2,0.52,0.89,0.76,0.07,0.64,0.57,1.38,1.87,0.51,0.7,1.52,0.89,-0.49,-1.08,0.01,0.88,1.26,0.92,0.45,0.8,0.4,-0.67,-0.01,0.68,0.3,2.09,0.48,-0.04,1.24,0.8,0.28,1.56,2.23,2.74,4.34,3.23,3.28,0.96,2.58,2.53,2.94,1.51,4.1,0.6,0.78,0.66,-0.64,0.64,0.02,0.87,1.82,1.83,1.74,1.41,0.52,0.59,0.21,-0.7,-0.95,-0.97,-0.56,0.45,0.21,-0.06,0.05,-0.95,-1.84,-1.93,-0.72,-0.14,0.37,0.5,0.59,0.74,0.07,-0.52,-0.47,0.31,0.89,0.81,0.61,0.29,0.62,1.52,1.3,0.94,0.27,1.06,-0.34,0.24,-0.49,-1.67,-0.77,0.36,0.42,-0.36,0.27,-0.01,0.41,-0.73,0.52,2.73,0.84,-0.5,-1.16,-0.22,1.57,1.47],"selic":[0.66,0.59,0.76,0.67,0.75,0.79,0.86,0.89,0.85,0.81,0.81,0.93,0.86,0.84,0.92,0.84,0.99,0.96,0.97,1.07,0.94,0.88,0.86,0.91,0.89,0.75,0.82,0.71,0.74,0.64,0.68,0.69,0.54,0.61,0.55,0.55,0.6,0.49,0.55,0.61,0.6,0.61,0.72,0.71,0.71,0.81,0.72,0.79,0.85,0.79,0.77,0.82,0.87,0.82,0.95,0.87,0.91,0.95,0.84,0.96,0.94,0.82,1.04,0.95,0.99,1.07,1.18,1.11,1.11,1.11,1.06,1.16,1.06,1.0,1.16,1.06,1.11,1.16,1.11,1.22,1.11,1.05,1.04,1.12,1.09,0.87,1.05,0.79,0.93,0.81,0.8,0.8,0.64,0.64,0.57,0.54,0.58,0.47,0.53,0.52,0.52,0.52,0.54,0.57,0.47,0.54,0.49,0.49,0.54,0.49,0.47,0.52,0.54,0.47,0.57,0.5,0.46,0.48,0.38,0.37,0.38,0.29,0.34,0.28,0.24,0.21,0.19,0.16,0.16,0.16,0.15,0.16,0.15,0.13,0.2,0.21,0.27,0.31,0.36,0.43,0.44,0.49,0.59,0.77,0.73,0.76,0.93,0.83,1.03,1.02,1.03,1.17,1.07,1.02,1.02,1.12,1.12,0.92,1.17,0.92,1.12,1.07,1.07,1.14,0.97,1.0,0.92,0.89,0.97,0.8,0.83,0.89,0.83,0.79,0.91,0.87,0.84,0.93,0.79,0.93,1.01,0.99,0.96,1.06,1.14,1.1,1.28,1.16,1.22,1.28,1.05,1.22,1.16,1.0,1.21,1.09,1.07,1.12,1.22,1.09,1.08,1.07,0.66]};
+const SGS = {ipca:433, incc:192, inccm:7456, igpm:189, selic:4390};
+const IDX_NAME = {ipca:"IPCA", incc:"INCC-DI", inccm:"INCC-M", igpm:"IGP-M"};
+const LEI_DISTRATO = "2018-12-28";
+const LEI_14905 = "2024-09-01";
+
+/* ===================== utilidades ===================== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const BRL = v => (v<0?"− ":"") + "R$ " + Math.abs(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const BRL0 = v => "R$ " + Math.round(v).toLocaleString("pt-BR");
+const PCT = v => v.toLocaleString("pt-BR",{maximumFractionDigits:2}) + "%";
+const num = s => { if (typeof s === "number") return s; s = String(s||"").trim(); if(!s) return 0;
+  if (s.includes(",")) s = s.replace(/\./g,"").replace(",", "."); const n = parseFloat(s.replace(/[^\d.-]/g,"")); return isFinite(n)?n:0; };
+const fmtMoneyInput = v => v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const val = id => $("#"+id).value;
+const nv = id => num(val(id));
+const todayISO = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const toDate = iso => { const [y,m,d]=iso.split("-").map(Number); return new Date(Date.UTC(y,m-1,d)); };
+const toISO = dt => dt.toISOString().slice(0,10);
+const addDays = (iso,n) => { const d=toDate(iso); d.setUTCDate(d.getUTCDate()+n); return toISO(d); };
+const addMonths = (iso,n) => { const [y,m,d]=iso.split("-").map(Number); const t=new Date(Date.UTC(y,m-1+n,1)); const dim=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()+1,0)).getUTCDate(); t.setUTCDate(Math.min(d,dim)); return toISO(t); };
+const daysBetween = (a,b) => Math.round((toDate(b)-toDate(a))/864e5);
+const brDate = iso => iso ? iso.split("-").reverse().join("/") : "—";
+const MESES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const [Y0,M0] = IDX.start.split("-").map(Number);
+const mIdx = iso => { const [y,m]=iso.split("-").map(Number); return (y-Y0)*12+(m-M0); };
+const mLabel = i => MESES[(M0-1+i)%12]+"/"+(Y0+Math.floor((M0-1+i)/12));
+const validISO = s => /^\d{4}-\d{2}-\d{2}$/.test(s||"");
+
+/* Fator de correção: produto dos índices mensais do mês do pagamento até o mês anterior ao cálculo.
+   Deflação é considerada, mas o valor corrigido nunca fica abaixo do nominal (orientação do STJ). */
+function fator(serie, de, ate){
+  const s = IDX[serie]; let i0 = Math.max(0, mIdx(de)), i1 = mIdx(ate), f = 1;
+  for (let i=i0; i<i1; i++){ if (s[i]===undefined) break; f *= 1 + s[i]/100; }
+  return Math.max(f,1);
+}
+/* Juros de mora simples: 1% a.m. até 08/2024; a partir de 09/2024, taxa legal = Selic − IPCA (mín. 0) */
+function jurosPct(de, ate){
+  let i0 = mIdx(de), i1 = mIdx(ate), tot = 0, last = 0, cut = mIdx(LEI_14905);
+  for (let i=i0; i<i1; i++){
+    if (i < cut) { tot += 1; continue; }
+    const se = IDX.selic[i], ip = IDX.ipca[i];
+    if (se!==undefined && ip!==undefined) last = Math.max(se-ip, 0);
+    tot += last;
+  }
+  // fração do mês corrente
+  return Math.max(tot,0);
+}
+const lastIdxLabel = serie => mLabel(IDX[serie].length-1);
+
+/* ===================== estado / pagamentos ===================== */
+const PAY = { a: [], d: [] };
+
+function seedDefaults(){
+  // Exemplo inicial para a reunião/landing já mostrar um resultado plausível
+  PAY.a = genRows([{tipo:"Entrada", valor:45000, qtd:1, data:"2021-03-10", per:1},{tipo:"Mensal", valor:2200, qtd:36, data:"2021-04-10", per:1}]);
+  PAY.d = genRows([{tipo:"Entrada", valor:38000, qtd:1, data:"2020-08-15", per:1},{tipo:"Mensal", valor:1800, qtd:30, data:"2020-09-15", per:1},{tipo:"Anual", valor:10000, qtd:2, data:"2021-08-15", per:12}]);
+}
+function genRows(specs){
+  const out=[]; specs.forEach(s=>{ for(let i=0;i<s.qtd;i++) out.push({data:addMonths(s.data,i*s.per), valor:s.valor, desc:s.tipo+(s.qtd>1?" "+(i+1)+"/"+s.qtd:"")}); });
+  return out.sort((x,y)=>x.data.localeCompare(y.data));
+}
+
+function renderPay(k){
+  const host = $(`.pay[data-pay="${k}"]`);
+  if (!host.dataset.built){
+    host.dataset.built = 1;
+    host.innerHTML = `
+      <div class="pay-tools">
+        <button type="button" class="btn sm" data-act="gen">+ Gerar parcelas</button>
+        <button type="button" class="btn sm" data-act="add">+ Pagamento avulso</button>
+        <button type="button" class="btn sm" data-act="quick">Só sei o total pago</button>
+        <button type="button" class="btn sm ghost" data-act="clear">Limpar</button>
+      </div>
+      <div class="gen" data-box="gen" hidden>
+        <div class="fields">
+          <div class="f"><label>Tipo</label><select data-g="tipo"><option>Entrada</option><option selected>Mensal</option><option>Intermediária</option><option>Anual</option><option>Chaves</option></select></div>
+          <div class="f"><label>Valor de cada</label><input data-g="valor" inputmode="decimal" placeholder="0,00"></div>
+          <div class="f"><label>Quantidade</label><input data-g="qtd" inputmode="numeric" value="12"></div>
+          <div class="f"><label>Periodicidade</label><select data-g="per"><option value="1">Mensal</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></select></div>
+          <div class="f"><label>1º vencimento</label><input type="date" data-g="data"></div>
+          <div class="f" style="justify-content:flex-end"><button type="button" class="btn primary" data-act="genok">Adicionar</button></div>
+        </div>
+      </div>
+      <div class="gen" data-box="quick" hidden>
+        <div class="fields">
+          <div class="f"><label>Total já pago</label><input data-q="total" inputmode="decimal" placeholder="0,00"></div>
+          <div class="f"><label>Primeiro pagamento</label><input type="date" data-q="ini"></div>
+          <div class="f"><label>Último pagamento</label><input type="date" data-q="fim"></div>
+          <div class="f" style="justify-content:flex-end"><button type="button" class="btn primary" data-act="quickok">Distribuir</button></div>
+        </div>
+        <p class="hint">Distribuímos o total em parcelas mensais iguais no período. Para mais precisão, lance os pagamentos reais.</p>
+      </div>
+      <div class="paylist"></div>
+      <div class="paysum"></div>`;
+    host.addEventListener("click", e=>{
+      const b = e.target.closest("[data-act]"); if(!b) return; const act=b.dataset.act;
+      const box = n => host.querySelector(`[data-box="${n}"]`);
+      if (act==="gen"){ box("gen").hidden=!box("gen").hidden; box("quick").hidden=true; }
+      if (act==="quick"){ box("quick").hidden=!box("quick").hidden; box("gen").hidden=true; }
+      if (act==="add"){ PAY[k].push({data:todayISO(), valor:0, desc:"Pagamento"}); renderPay(k); recalc(); }
+      if (act==="clear"){ if(PAY[k].length && !confirm("Apagar todos os pagamentos?")) return; PAY[k]=[]; renderPay(k); recalc(); }
+      if (act==="genok"){
+        const g = n => host.querySelector(`[data-g="${n}"]`).value;
+        const s = {tipo:g("tipo"), valor:num(g("valor")), qtd:Math.max(1,Math.min(600,parseInt(g("qtd"))||1)), per:parseInt(g("per")), data:g("data")};
+        if (!s.valor || !validISO(s.data)) { alert("Informe o valor e a data do 1º vencimento."); return; }
+        PAY[k] = PAY[k].concat(genRows([s])).sort((x,y)=>x.data.localeCompare(y.data)); box("gen").hidden=true; renderPay(k); recalc();
+      }
+      if (act==="quickok"){
+        const q = n => host.querySelector(`[data-q="${n}"]`).value;
+        const total=num(q("total")), ini=q("ini"), fim=q("fim");
+        if (!total || !validISO(ini) || !validISO(fim) || fim<ini){ alert("Informe o total e um período válido."); return; }
+        const n = Math.max(1, mIdx(fim)-mIdx(ini)+1);
+        PAY[k] = genRows([{tipo:"Parcela", valor:Math.round(total/n*100)/100, qtd:n, data:ini, per:1}]); box("quick").hidden=true; renderPay(k); recalc();
+      }
+      if (act==="del"){ PAY[k].splice(+b.dataset.i,1); renderPay(k); recalc(); }
+    });
+    host.addEventListener("change", e=>{
+      const el = e.target.closest("[data-i]"); if(!el || !el.dataset.f) return;
+      const r = PAY[k][+el.dataset.i]; if(!r) return;
+      if (el.dataset.f==="valor"){ r.valor=num(el.value); el.value=fmtMoneyInput(r.valor); }
+      else if (el.dataset.f==="data"){ if(validISO(el.value)) r.data=el.value; }
+      else r.desc = el.value;
+      updateSum(k); recalc();
+    });
+  }
+  const list = host.querySelector(".paylist");
+  if (!PAY[k].length){ list.innerHTML = `<div class="empty">Nenhum pagamento lançado. Use "Gerar parcelas" para lançar entrada e mensais em segundos.</div>`; }
+  else list.innerHTML = `<table><thead><tr><th style="width:38%">Descrição</th><th>Data</th><th>Valor (R$)</th><th></th></tr></thead><tbody>${
+    PAY[k].map((r,i)=>`<tr><td><input data-i="${i}" data-f="desc" value="${r.desc.replace(/"/g,"&quot;")}"></td><td><input type="date" data-i="${i}" data-f="data" value="${r.data}"></td><td><input data-i="${i}" data-f="valor" inputmode="decimal" value="${fmtMoneyInput(r.valor)}"></td><td><button type="button" class="x" data-act="del" data-i="${i}" aria-label="Remover">✕</button></td></tr>`).join("")
+  }</tbody></table>`;
+  updateSum(k);
+}
+function updateSum(k){
+  const host = $(`.pay[data-pay="${k}"]`); const tot = PAY[k].reduce((s,r)=>s+r.valor,0);
+  host.querySelector(".paysum").innerHTML = `<span>${PAY[k].length} pagamento(s)</span><b>Total nominal: ${BRL(tot)}</b>`;
+}
+
+/* ===================== cálculo: ATRASO ===================== */
+function calcAtraso(){
+  const valor = nv("a_valor"), dc = val("a_dataContrato"), prev = val("a_prevista"), calc = val("a_calc")||todayISO();
+  const entregue = segVal("a_entregue")==="sim", entrega = val("a_entrega");
+  const tol = $("#a_tol").checked, idx = val("a_idx");
+  if (!valor || !validISO(prev) || !validISO(dc)) return {erro:"Preencha valor do imóvel, data da assinatura e data prevista de entrega."};
+  if (entregue && !validISO(entrega)) return {erro:"Informe a data em que as chaves foram entregues."};
+  const inicio = tol ? addDays(prev,180) : prev;
+  const fim = entregue ? entrega : calc;
+  const dias = daysBetween(inicio, fim);
+  const pagos = PAY.a.filter(p=>p.data<=calc);
+  const totalPago = pagos.reduce((s,p)=>s+p.valor,0);
+  const pmin = nv("a_pmin")/100, pmax = nv("a_pmax")/100, multa = nv("a_multa")/100, multaBase = val("a_multaBase");
+  const posLei = dc >= LEI_DISTRATO;
+
+  const r = {inicio, fim, dias, meses:Math.max(dias,0)/30.4375, totalPago, idx, calc, posLei, entregue, prev, tol};
+  if (dias <= 0){ r.semAtraso = true; r.diasAteAtraso = -dias; }
+
+  // percorre o atraso mês a mês, pro rata die, corrigindo cada competência até a data do cálculo
+  let lcMin=0, lcMax=0, mLegal=0, mCont=0; const rows=[];
+  if (dias > 0){
+    let cur = inicio;
+    while (cur < fim){
+      const d = toDate(cur); const nextM = toISO(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 1)));
+      const segEnd = nextM < fim ? nextM : fim;
+      const dim = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 0)).getUTCDate();
+      const frac = daysBetween(cur, segEnd)/dim;
+      const fCorr = fator(idx, cur, calc);
+      const vAtual = valor * fator("ipca", dc, cur);           // valor do imóvel atualizado (IPCA) na competência
+      const pagoAte = PAY.a.filter(p=>p.data<=cur).reduce((s,p)=>s+p.valor,0);
+      const a1 = vAtual*pmin*frac*fCorr, a2 = vAtual*pmax*frac*fCorr;
+      const a3 = pagoAte*0.01*frac*fCorr;
+      const a4 = (multaBase==="pago"?pagoAte:valor)*multa*frac*fCorr;
+      lcMin+=a1; lcMax+=a2; mLegal+=a3; mCont+=a4;
+      rows.push({comp:mLabel(mIdx(cur)), dias:daysBetween(cur,segEnd), base:vAtual, f:fCorr, a1, a2, a3, a4});
+      cur = segEnd;
+    }
+  }
+  r.rows=rows; r.lcMin=lcMin; r.lcMax=lcMax; r.mLegal = posLei ? mLegal : 0; r.mCont=mCont;
+  // Tema 970/STJ: cláusula penal moratória não se cumula com lucros cessantes → vale a maior
+  const multaMaior = Math.max(r.mLegal, r.mCont);
+  r.princMin = Math.max(lcMin, multaMaior);
+  r.princMax = Math.max(lcMax, multaMaior);
+  r.usaMultaMin = multaMaior > lcMin;
+
+  // Despesas pagas antes das chaves (corrigidas desde o fim do atraso — estimativa conservadora)
+  r.despesas = nv("a_despesas");
+  // Tema 996: no atraso, INCC do saldo é substituído pelo IPCA (salvo se o IPCA for maior)
+  const saldo = nv("a_saldo"), idxS = val("a_idxSaldo");
+  r.difIdx = 0; r.fS=1; r.fI=1;
+  if (saldo>0 && dias>0){ r.fS = fator(idxS, inicio, fim); r.fI = fator("ipca", inicio, fim); r.difIdx = Math.max(0, saldo*(r.fS - r.fI)); r.idxS = idxS; }
+  r.dm = (dias>0) ? nv("a_dm") : 0;
+
+  // Juros de mora
+  r.jur = 0; r.jurPct=0;
+  if ($("#a_jur").checked && validISO(val("a_jurData")) && dias>0){
+    r.jurPct = jurosPct(val("a_jurData"), calc);
+  }
+  r.baseMin = r.princMin + r.despesas + r.difIdx;
+  r.baseMax = r.princMax + r.despesas + r.difIdx + r.dm;
+  r.jurMin = r.baseMin*r.jurPct/100; r.jurMax = r.baseMax*r.jurPct/100;
+  r.totMin = r.baseMin + r.jurMin; r.totMax = r.baseMax + r.jurMax;
+  r.alugMes = valor*fator("ipca",dc,calc)*pmin;
+  return r;
+}
+
+function renderAtraso(){
+  const r = calcAtraso(), host = $("#res-atraso");
+  if (r.erro){ host.innerHTML = `<div class="big"><div class="lbl">Sua estimativa</div><div class="val">—</div><div class="sub">${r.erro}</div></div>`; return r; }
+  if (r.semAtraso){
+    host.innerHTML = `<div class="big"><div class="lbl">Ainda não há atraso indenizável</div><div class="val">R$ 0,00</div>
+      <div class="sub">${r.tol?"Com a tolerância de 180 dias, o":"O"} prazo da construtora vai até <b>${brDate(r.inicio)}</b>${r.diasAteAtraso?` (faltam ${r.diasAteAtraso} dias)`:""}.</div></div>
+      <div class="note warn" style="margin-top:14px"><b>Atenção:</b> a partir dessa data cada mês de atraso passa a gerar indenização de aproximadamente <b>${BRL(r.alugMes)}</b>/mês (0,5% do valor do imóvel). Guarde todos os comprovantes.</div>
+      ${ctaHTML("atraso")}`;
+    bindCTA(host,"atraso",r); return r;
+  }
+  const mesesTxt = r.meses>=1 ? `${r.meses.toLocaleString("pt-BR",{maximumFractionDigits:1})} meses` : `${r.dias} dias`;
+  const maxBar = Math.max(r.lcMax, r.mLegal, r.mCont, 1);
+  host.innerHTML = `
+    <div class="big">
+      <div class="lbl">Você pode ter direito a</div>
+      <div class="val">${BRL0(r.totMin)} a ${BRL0(r.totMax)}</div>
+      <div class="sub">${mesesTxt} de atraso (${brDate(r.inicio)} a ${brDate(r.fim)}${r.entregue?"":" — ainda em curso"}), corrigido até ${brDate(r.calc)}.</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="l">Atraso indenizável</div><div class="v">${r.dias} dias</div></div>
+      <div class="kpi good"><div class="l">Aluguel presumido/mês hoje</div><div class="v">${BRL(r.alugMes)}</div></div>
+    </div>
+    <div class="lines">
+      <div class="line ${r.usaMultaMin?'dim':''}"><span class="n">Lucros cessantes — conservador<small>${PCT(nv("a_pmin"))} a.m. do valor do imóvel (Tema 996/STJ)</small></span><span class="a">${BRL(r.lcMin)}</span></div>
+      <div class="line"><span class="n">Lucros cessantes — favorável<small>${PCT(nv("a_pmax"))} a.m. do valor do imóvel</small></span><span class="a">${BRL(r.lcMax)}</span></div>
+      ${r.posLei?`<div class="line ${r.mLegal>r.lcMin?'':'dim'}"><span class="n">Multa legal de 1% a.m. sobre o pago<small>Art. 43-A, §2º, Lei 4.591/64 — não cumula (Tema 970)</small></span><span class="a">${BRL(r.mLegal)}</span></div>`:""}
+      ${r.mCont>0?`<div class="line ${r.mCont>r.lcMin?'':'dim'}"><span class="n">Multa contratual<small>Não cumula com lucros cessantes (Tema 970) — vale a maior</small></span><span class="a">${BRL(r.mCont)}</span></div>`:""}
+      ${r.difIdx>0?`<div class="line pos"><span class="n">${IDX_NAME[r.idxS]} cobrado a mais no saldo<small>Substituição pelo IPCA no período de atraso (Tema 996)</small></span><span class="a">${BRL(r.difIdx)}</span></div>`:""}
+      ${r.despesas>0?`<div class="line pos"><span class="n">Condomínio/IPTU antes das chaves<small>Restituição</small></span><span class="a">${BRL(r.despesas)}</span></div>`:""}
+      ${r.dm>0?`<div class="line"><span class="n">Danos morais (só no cenário favorável)<small>Não são automáticos; mais prováveis em atrasos longos</small></span><span class="a">${BRL(r.dm)}</span></div>`:""}
+      ${r.jurPct>0?`<div class="line"><span class="n">Juros de mora (${PCT(r.jurPct)})<small>Desde ${brDate(val("a_jurData"))}</small></span><span class="a">${BRL(r.jurMin)} a ${BRL(r.jurMax)}</span></div>`:""}
+      <div class="line tot"><span class="n">Total estimado</span><span class="a">${BRL(r.totMin)}<br><span style="font-weight:600;color:var(--muted);font-size:13px">até ${BRL(r.totMax)}</span></span></div>
+    </div>
+    <div class="bars">
+      ${bar("Lucros cessantes (favorável)", r.lcMax, maxBar, "var(--good)")}
+      ${bar("Lucros cessantes (conservador)", r.lcMin, maxBar, "var(--accent)")}
+      ${r.posLei?bar("Multa legal art. 43-A", r.mLegal, maxBar, "var(--muted)"):""}
+    </div>
+    ${r.dias>180 && !r.entregue ? `<div class="note good"><b>Você também pode desistir do imóvel.</b> Com atraso além da tolerância, a lei permite desfazer o contrato e receber <b>100% do que pagou</b>, corrigido e de uma vez (art. 43-A, §1º e Súmula 543/STJ). <a href="#" id="goDistrato"><b>Simular a devolução integral →</b></a></div>`:""}
+    ${!r.posLei?`<div class="note warn">Contrato anterior a 28/12/2018: a multa legal do art. 43-A não se aplica, mas os lucros cessantes (Tema 996) e a inversão de multa prevista só contra o comprador (Tema 971) continuam valendo.</div>`:""}
+    ${ctaHTML("atraso")}
+    <details class="memo"><summary>Memória de cálculo (${r.rows.length} competências)</summary><div class="memo-body">
+      <table><thead><tr><th>Competência</th><th>Dias</th><th>Valor imóvel atualiz.</th><th>Fator ${IDX_NAME[r.idx]}</th><th>LC cons.</th><th>LC fav.</th>${r.posLei?"<th>Multa 43-A</th>":""}${r.mCont>0?"<th>Multa contr.</th>":""}</tr></thead><tbody>
+      ${r.rows.map(x=>`<tr><td>${x.comp}</td><td>${x.dias}</td><td>${BRL(x.base)}</td><td>${x.f.toFixed(6)}</td><td>${BRL(x.a1)}</td><td>${BRL(x.a2)}</td>${r.posLei?`<td>${BRL(x.a3)}</td>`:""}${r.mCont>0?`<td>${BRL(x.a4)}</td>`:""}</tr>`).join("")}
+      </tbody></table>
+      ${r.difIdx>0?`<p class="hint">Saldo ${BRL(nv("a_saldo"))} × (fator ${IDX_NAME[r.idxS]} ${r.fS.toFixed(6)} − fator IPCA ${r.fI.toFixed(6)}) = ${BRL(r.difIdx)}</p>`:""}
+      <p class="hint">Cada competência é proporcional aos dias de atraso no mês (pro rata die) e corrigida pelo ${IDX_NAME[r.idx]} até ${brDate(r.calc)}. Índices disponíveis até ${lastIdxLabel(r.idx)}.</p>
+    </div></details>
+    <div class="basis"><b>Base:</b> Tema 996/STJ (lucros cessantes presumidos e substituição do INCC), Tema 970 (não cumulação), Tema 971 (inversão da multa), art. 43-A da Lei 4.591/64 (tolerância de 180 dias e multa de 1%).</div>`;
+  bindCTA(host,"atraso",r);
+  const go = host.querySelector("#goDistrato");
+  if (go) go.addEventListener("click", e=>{ e.preventDefault(); toDistratoFromAtraso(); });
+  return r;
+}
+
+/* ===================== cálculo: DISTRATO ===================== */
+function calcDistrato(){
+  const valor = nv("d_valor"), dc = val("d_dataContrato"), calc = val("d_calc")||todayISO(), idx = val("d_idx");
+  const regime = segVal("d_regime"), motivo = segVal("d_motivo");
+  if (!valor || !validISO(dc)) return {erro:"Preencha o valor do imóvel e a data da assinatura."};
+  const pagos = PAY.d.filter(p=>p.data<=calc);
+  if (!pagos.length) return {erro:"Lance os pagamentos feitos (use “Gerar parcelas” ou “Só sei o total pago”)."};
+  const posLei = dc >= LEI_DISTRATO;
+  const rows = pagos.map(p=>{ const f=fator(idx,p.data,calc); return {...p, f, corr:p.valor*f}; });
+  const nominal = rows.reduce((s,x)=>s+x.valor,0), corrigido = rows.reduce((s,x)=>s+x.corr,0);
+  const valorAtual = valor*fator(idx, dc, calc);
+  const corr = nv("d_corr"), corrData = val("d_corrData");
+  const corrAtual = corr>0 ? corr*fator(idx, validISO(corrData)?corrData:dc, calc) : 0;
+  const posse = Math.max(0, num(val("d_posse"))), fru = nv("d_fru")/100;
+  const fruicao = valorAtual*fru*posse;
+  const retCont = nv("d_retCont")/100, retBase = val("d_retBase");
+  const retencaoDe = (pct, base) => pct * (base==="contrato" ? valorAtual : corrigido);
+
+  const r = {nominal, corrigido, rows, idx, calc, regime, motivo, posLei, corrAtual, fruicao, valorAtual, posse};
+
+  // ---- Cenário 1: o que a construtora tende a pagar (contrato / lei) ----
+  let tetoLei, tetoLeiTxt, prazoLei;
+  if (regime==="lote"){ tetoLei = 0.10*valorAtual; tetoLeiTxt = "10% do valor atualizado do contrato (art. 32-A, Lei 6.766/79)"; prazoLei = "em até 12 parcelas mensais, a partir de 180 dias do prazo de conclusão das obras (ou 12 meses do distrato, se já concluídas)"; }
+  else if (regime==="afetacao"){ tetoLei = 0.50*corrigido; tetoLeiTxt = "50% dos valores pagos (art. 67-A, §5º, Lei 4.591/64)"; prazoLei = "até 30 dias após o habite-se"; }
+  else { tetoLei = 0.25*corrigido; tetoLeiTxt = "25% dos valores pagos (art. 67-A, II, Lei 4.591/64)"; prazoLei = "em parcela única, 180 dias após o distrato"; }
+  let retC = retencaoDe(retCont, retBase);
+  r.retContratual = retC;
+  r.ofertaRet = retC; r.ofertaCorr = corrAtual; // corretagem: não devolvida pela construtora
+  r.ofertaFru = fruicao;
+  r.oferta = Math.max(0, corrigido - r.ofertaRet - r.ofertaFru);
+  r.prazoOferta = posLei ? prazoLei : "conforme contrato — geralmente parcelado";
+
+  // ---- Cenário 2: o que se pode buscar judicialmente ----
+  let retMin=0, retMax=0, base, corrDevolve=false;
+  if (motivo==="construtora"){
+    retMin = retMax = 0; corrDevolve = true; r.fruJud = 0;
+    base = "Culpa da construtora: devolução integral, corrigida e imediata, em parcela única (Súmula 543/STJ), inclusive corretagem.";
+  } else {
+    corrDevolve = $("#d_corrInfo").checked;
+    r.fruJud = fruicao;
+    if (!posLei){
+      retMin = 0.10*corrigido; retMax = 0.25*corrigido;
+      base = "Contrato anterior à Lei do Distrato: o STJ admite retenção entre 10% e 25% do valor pago, com devolução imediata e em parcela única (Súmula 543).";
+    } else if (regime==="afetacao"){
+      retMin = 0.25*corrigido; retMax = 0.50*corrigido;
+      base = "Lei 13.786/18 com patrimônio de afetação: a lei permite até 50%, mas a pena pode ser reduzida pelo juiz quando excessiva (art. 413 do CC e CDC). Faixa de referência: 25% a 50%.";
+    } else if (regime==="lote"){
+      retMin = 0.10*corrigido; retMax = 0.10*valorAtual;
+      base = "Loteamento: retenção limitada a 10% do valor do contrato; há decisões que aplicam o percentual sobre o valor efetivamente pago.";
+    } else {
+      retMin = 0.10*corrigido; retMax = 0.25*corrigido;
+      base = "Lei 13.786/18 sem afetação: teto de 25% do valor pago; a cláusula pode ser reduzida quando desproporcional (art. 413 do CC).";
+    }
+    // a retenção judicial nunca será maior que a contratual
+    retMax = Math.min(retMax, retC); retMin = Math.min(retMin, retMax);
+  }
+  r.retMin=retMin; r.retMax=retMax; r.baseTxt=base; r.corrDevolve=corrDevolve;
+  r.corrJud = corrDevolve ? corrAtual : 0;
+  r.jur=0; r.jurPct=0;
+  if ($("#d_jur").checked && validISO(val("d_jurData"))) r.jurPct = jurosPct(val("d_jurData"), calc);
+  const j = v => v*(1+r.jurPct/100);
+  r.judMax = j(Math.max(0, corrigido - retMin - r.fruJud + r.corrJud));
+  r.judMin = j(Math.max(0, corrigido - retMax - r.fruJud + r.corrJud));
+  r.ganho = r.judMax - r.oferta;
+  r.tetoLei = tetoLei; r.tetoLeiTxt = tetoLeiTxt; r.retAcimaLei = posLei && motivo==="comprador" && retC > tetoLei + 0.5;
+  return r;
+}
+
+function renderDistrato(){
+  const r = calcDistrato(), host = $("#res-distrato");
+  if (r.erro){ host.innerHTML = `<div class="big"><div class="lbl">Sua estimativa</div><div class="val">—</div><div class="sub">${r.erro}</div></div>`; return r; }
+  const maxBar = Math.max(r.corrigido + r.corrAtual, r.judMax, 1);
+  const culpa = r.motivo==="construtora";
+  host.innerHTML = `
+    <div class="big">
+      <div class="lbl">${culpa?"Você pode receber de volta":"Na Justiça, você pode receber"}</div>
+      <div class="val">${culpa?BRL0(r.judMax):`${BRL0(r.judMin)} a ${BRL0(r.judMax)}`}</div>
+      <div class="sub">Você pagou ${BRL(r.nominal)}, que hoje valem ${BRL(r.corrigido)} (${IDX_NAME[r.idx]} até ${brDate(r.calc)}).</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi bad"><div class="l">Pelo contrato, a construtora pagaria</div><div class="v">${BRL(r.oferta)}</div></div>
+      <div class="kpi good"><div class="l">Diferença que você pode recuperar</div><div class="v">${r.ganho>0?"+ "+BRL(r.ganho):BRL(0)}</div></div>
+    </div>
+    <div class="bars">
+      ${bar("Tudo o que você pagou, corrigido"+(r.corrAtual?" (+ corretagem)":""), r.corrigido + r.corrAtual, maxBar, "var(--ink-2)")}
+      ${bar("Na Justiça (cenário favorável)", r.judMax, maxBar, "var(--good)")}
+      ${culpa?"":bar("Na Justiça (cenário conservador)", r.judMin, maxBar, "var(--accent)")}
+      ${bar("Pelo contrato / oferta da construtora", r.oferta, maxBar, "var(--bad)")}
+    </div>
+    <div class="lines">
+      <div class="line"><span class="n">Valores pagos (nominal)<small>${r.rows.length} pagamentos</small></span><span class="a">${BRL(r.nominal)}</span></div>
+      <div class="line pos"><span class="n">Correção monetária (${IDX_NAME[r.idx]})</span><span class="a">+ ${BRL(r.corrigido-r.nominal)}</span></div>
+      <div class="line"><span class="n"><b>Total pago atualizado</b></span><span class="a">${BRL(r.corrigido)}</span></div>
+      <div class="line neg"><span class="n">Retenção pelo contrato<small>${PCT(nv("d_retCont"))} sobre ${val("d_retBase")==="contrato"?"o valor do contrato":"o valor pago"}</small></span><span class="a">− ${BRL(r.ofertaRet)}</span></div>
+      ${culpa?`<div class="line pos"><span class="n">Retenção judicial<small>Culpa da construtora: nenhuma</small></span><span class="a">R$ 0,00</span></div>`
+             :`<div class="line neg"><span class="n">Retenção judicial (faixa)<small>Referência legal e jurisprudencial</small></span><span class="a">− ${BRL(r.retMin)} a ${BRL(r.retMax)}</span></div>`}
+      ${r.fruicao>0?`<div class="line neg"><span class="n">Taxa de fruição<small>${r.posse} meses × ${PCT(nv("d_fru"))} do valor atualizado${culpa?" — afastada por culpa da construtora":""}</small></span><span class="a">− ${BRL(culpa?0:r.fruicao)}</span></div>`:""}
+      ${r.corrAtual>0?`<div class="line ${r.corrDevolve?'pos':'dim'}"><span class="n">Comissão de corretagem (corrigida)<small>${r.corrDevolve?"Devolução cabível":"Em regra não devolvida se informada (Tema 938)"}</small></span><span class="a">${r.corrDevolve?"+ ":""}${BRL(r.corrAtual)}</span></div>`:""}
+      ${r.jurPct>0?`<div class="line pos"><span class="n">Juros de mora (${PCT(r.jurPct)})<small>Desde ${brDate(val("d_jurData"))}</small></span><span class="a">incluídos</span></div>`:""}
+    </div>
+    ${r.retAcimaLei?`<div class="note bad"><b>Cláusula acima do teto legal.</b> Seu contrato prevê ${BRL(r.retContratual)} de retenção, mas o limite da lei é ${r.tetoLeiTxt}: ${BRL(r.tetoLei)}. O excesso é nulo.</div>`:""}
+    <div class="note ${culpa?'good':'warn'}">${r.baseTxt}${r.posLei&&!culpa?` <br><b>Prazo pela lei:</b> ${r.prazoOferta}.`:""}</div>
+    ${ctaHTML("distrato")}
+    <details class="memo"><summary>Memória de cálculo (${r.rows.length} pagamentos)</summary><div class="memo-body">
+      <table><thead><tr><th>Data</th><th>Descrição</th><th>Valor pago</th><th>Fator ${IDX_NAME[r.idx]}</th><th>Valor corrigido</th></tr></thead><tbody>
+      ${r.rows.map(x=>`<tr><td>${brDate(x.data)}</td><td style="text-align:left">${x.desc}</td><td>${BRL(x.valor)}</td><td>${x.f.toFixed(6)}</td><td>${BRL(x.corr)}</td></tr>`).join("")}
+      <tr><td><b>Total</b></td><td></td><td><b>${BRL(r.nominal)}</b></td><td></td><td><b>${BRL(r.corrigido)}</b></td></tr>
+      </tbody></table>
+      <p class="hint">Correção do mês do pagamento até o mês anterior a ${brDate(r.calc)}. Índices disponíveis até ${lastIdxLabel(r.idx)}. Valor do contrato atualizado: ${BRL(r.valorAtual)}.</p>
+    </div></details>
+    <div class="basis"><b>Base:</b> Súmula 543/STJ, Lei 13.786/2018 (art. 67-A da Lei 4.591/64 e art. 32-A da Lei 6.766/79), Tema 938/STJ (corretagem), art. 413 do Código Civil e art. 51 do CDC.</div>`;
+  bindCTA(host,"distrato",r);
+  return r;
+}
+
+/* ===================== visual helpers ===================== */
+function bar(label, v, max, color){
+  return `<div class="bar"><div class="t"><span>${label}</span><b>${BRL(v)}</b></div><div class="tr"><div class="fl" style="width:${Math.max(0,Math.min(100,v/max*100)).toFixed(1)}%;background:${color}"></div></div></div>`;
+}
+function ctaHTML(tipo){
+  return `<div class="cta">
+    <button type="button" class="btn wa" data-cta="wa"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3a.5.5 0 0 0 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>Quero que um advogado analise meu caso</button>
+    <div class="row">
+      <button type="button" class="btn" data-cta="pdf">Baixar relatório (PDF)</button>
+      <button type="button" class="btn" data-cta="copy">Copiar resumo</button>
+    </div>
+  </div>`;
+}
+function resumo(tipo, r){
+  const cli = $("#clientName").value.trim();
+  if (tipo==="atraso"){
+    if (r.semAtraso) return `Simulação – Atraso de obra${cli?" ("+cli+")":""}\nImóvel: ${BRL(nv("a_valor"))}\nEntrega prevista: ${brDate(val("a_prevista"))}\nAinda dentro do prazo (até ${brDate(r.inicio)}).`;
+    return `Simulação – Atraso na entrega da obra${cli?" ("+cli+")":""}\nImóvel: ${BRL(nv("a_valor"))}\nEntrega prevista: ${brDate(val("a_prevista"))}\nAtraso indenizável: ${r.dias} dias\nEstimativa: ${BRL(r.totMin)} a ${BRL(r.totMax)}`;
+  }
+  return `Simulação – Distrato${cli?" ("+cli+")":""}\nImóvel: ${BRL(nv("d_valor"))}\nTotal pago: ${BRL(r.nominal)} (atualizado ${BRL(r.corrigido)})\nPelo contrato: ${BRL(r.oferta)}\nNa Justiça: ${r.motivo==="construtora"?BRL(r.judMax):BRL(r.judMin)+" a "+BRL(r.judMax)}`;
+}
+function bindCTA(host, tipo, r){
+  host.querySelectorAll("[data-cta]").forEach(b=>b.addEventListener("click", ()=>{
+    const t = resumo(tipo, r);
+    if (b.dataset.cta==="wa"){
+      const msg = `Olá! Fiz a simulação no site e gostaria de uma análise do meu caso.\n\n${t}`;
+      if (CONFIG.webhookLeads) { try { fetch(CONFIG.webhookLeads,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tipo, resumo:t, totalMin:r.totMin??r.judMin, totalMax:r.totMax??r.judMax, data:new Date().toISOString(), pagina:location.href})}); } catch(e){} }
+      window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
+    }
+    if (b.dataset.cta==="pdf"){ printReport(tipo); }
+    if (b.dataset.cta==="copy"){
+      const done = ()=>{ const o=b.textContent; b.textContent="Copiado ✓"; setTimeout(()=>b.textContent=o,1600); };
+      if (navigator.clipboard) navigator.clipboard.writeText(t).then(done).catch(()=>prompt("Copie o resumo:",t)); else prompt("Copie o resumo:",t);
+    }
+  }));
+}
+function printReport(tipo){
+  $("#phTitle").textContent = tipo==="atraso" ? "Indenização por atraso na entrega da obra" : "Distrato e restituição de valores";
+  const cli=$("#clientName").value.trim(), ref=$("#clientRef").value.trim();
+  $("#phMeta").textContent = [cli&&("Cliente: "+cli), ref&&("Empreendimento: "+ref), "Emitido em "+brDate(todayISO()), CONFIG.escritorio+" · "+CONFIG.oab].filter(Boolean).join("  ·  ");
+  $$("details.memo").forEach(d=>d.open=true);
+  setTimeout(()=>window.print(), 50);
+}
+
+/* ===================== segmented controls, abas, eventos ===================== */
+function segVal(name){ const b=document.querySelector(`[data-seg="${name}"] [aria-pressed="true"]`); return b?b.dataset.v:null; }
+function setSeg(name, v){ $$(`[data-seg="${name}"] button`).forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.v===v))); onSeg(name,v); }
+function onSeg(name, v){
+  if (name==="a_entregue") $("#a_entregaWrap").hidden = v!=="sim";
+  if (name==="d_regime"){
+    const def = {afetacao:50, incorp:25, lote:10}[v];
+    $("#d_retCont").value = String(def); $("#d_retBase").value = v==="lote" ? "contrato" : "pago";
+    $("#d_fru").value = v==="lote" ? "0,75" : "0,5";
+  }
+}
+$$("[data-seg]").forEach(g=>g.addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return; setSeg(g.dataset.seg, b.dataset.v); recalc(); }));
+
+let TAB = "atraso";
+function showTab(t){
+  TAB = t;
+  $$(".tab").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===t)));
+  ["atraso","distrato"].forEach(k=>{ const p=$("#panel-"+k); p.hidden = k!==t; p.classList.toggle("panel-hidden", k!==t); });
+  try{ localStorage.setItem("calc_tab", t); }catch(e){}
+  recalc();
+}
+$$(".tab").forEach(b=>b.addEventListener("click", ()=>showTab(b.dataset.tab)));
+
+function toDistratoFromAtraso(){
+  $("#d_valor").value = val("a_valor"); $("#d_dataContrato").value = val("a_dataContrato");
+  PAY.d = PAY.a.map(p=>({...p})); renderPay("d");
+  setSeg("d_motivo","construtora");
+  showTab("distrato"); window.scrollTo({top:$(".tabs").offsetTop-70, behavior:"smooth"});
+}
+
+let tmr; function recalc(){ clearTimeout(tmr); tmr=setTimeout(()=>{ const r = TAB==="atraso" ? renderAtraso() : renderDistrato(); updateMbar(r); }, 60); }
+function updateMbar(r){
+  const bar=$("#mbar"); if(!r || r.erro){ bar.hidden=true; return; } bar.hidden=false;
+  if (TAB==="atraso"){ $("#mbarL").textContent = r.semAtraso ? "Ainda no prazo" : "Indenização estimada"; $("#mbarV").textContent = r.semAtraso ? "R$ 0" : `${BRL0(r.totMin)} a ${BRL0(r.totMax)}`; }
+  else { $("#mbarL").textContent = "Devolução na Justiça"; $("#mbarV").textContent = r.motivo==="construtora" ? BRL0(r.judMax) : `${BRL0(r.judMin)} a ${BRL0(r.judMax)}`; }
+}
+$("#mbarGo").addEventListener("click", ()=>{ const el=$("#res-"+TAB); window.scrollTo({top:el.getBoundingClientRect().top+scrollY-74, behavior:"smooth"}); });
+document.addEventListener("input", e=>{ if(e.target.closest(".paylist")||e.target.closest(".gen")) return; if(e.target.matches("input,select")) recalc(); });
+document.addEventListener("change", e=>{ if(e.target.closest(".paylist")||e.target.closest(".gen")) return; if(e.target.matches("[data-money]")) e.target.value = fmtMoneyInput(num(e.target.value)); recalc(); });
+
+/* modo reunião */
+$("#meetingBtn").addEventListener("click", ()=>{
+  const on = document.body.classList.toggle("meeting");
+  $("#meetingBtn span").textContent = on ? "Sair do modo reunião" : "Modo reunião";
+  if (on && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  if (!on && document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  window.scrollTo({top:0});
+});
+$("#clearBtn").addEventListener("click", ()=>{
+  if(!confirm("Limpar todos os dados para um novo cliente?")) return;
+  $("#clientName").value=""; $("#clientRef").value=""; PAY.a=[]; PAY.d=[]; renderPay("a"); renderPay("d");
+  ["a_despesas","a_saldo","d_corr"].forEach(id=>$("#"+id).value="0,00"); $("#d_posse").value="0"; recalc();
+});
+/* tema */
+$("#themeBtn").addEventListener("click", ()=>{
+  const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  const nx = cur==="dark"?"light":"dark"; document.documentElement.dataset.theme = nx; try{localStorage.setItem("calc_theme",nx);}catch(e){}
+});
+
+/* ===================== índices online (BCB) ===================== */
+async function refreshIndices(){
+  if (!CONFIG.atualizarIndicesOnline) return setIdxInfo(false);
+  const p = Object.entries(SGS).map(async ([k,code])=>{
+    const i = IDX[k].length - 1; // sobrepõe o último mês para não receber 404 quando não há dado novo
+    const y = Y0+Math.floor((M0-1+i)/12), m=(M0-1+i)%12+1;
+    const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${code}/dados?formato=json&dataInicial=01/${String(m).padStart(2,"0")}/${y}`;
+    const ctl = new AbortController(); const to = setTimeout(()=>ctl.abort(), 8000);
+    try{
+      const res = await fetch(url,{signal:ctl.signal}); if(!res.ok) return false; const arr = await res.json();
+      arr.forEach(o=>{ const [dd,mm,yy]=o.data.split("/").map(Number); const ix=(yy-Y0)*12+(mm-M0); if(ix===IDX[k].length) IDX[k].push(parseFloat(o.valor)); });
+      return true;
+    }catch(e){ return false; } finally{ clearTimeout(to); }
+  });
+  const ok = (await Promise.all(p)).some(Boolean);
+  setIdxInfo(ok); recalc();
+}
+function setIdxInfo(online){
+  $("#idxDot").classList.toggle("ok", online);
+  $("#idxInfo").textContent = `Índices oficiais (BCB/SGS) ${online?"atualizados agora":"embutidos"}: IPCA até ${lastIdxLabel("ipca")}, INCC-DI até ${lastIdxLabel("incc")}, IGP-M até ${lastIdxLabel("igpm")}.`;
+}
+
+/* ===================== init ===================== */
+(function init(){
+  try{ const th = localStorage.getItem("calc_theme"); if (th) document.documentElement.dataset.theme = th; }catch(e){}
+  $("#firmName").textContent = CONFIG.escritorio; $("#firmSub").textContent = CONFIG.subtitulo; $("#logo").textContent = CONFIG.logo;
+  $("#footFirm").textContent = `${CONFIG.escritorio} · ${CONFIG.oab}`;
+  const t = todayISO(); $("#a_calc").value = t; $("#d_calc").value = t; $("#a_jurData").value = t; $("#d_jurData").value = t;
+  if (new URLSearchParams(location.search).has("reuniao")) $("#meetingBtn").click();
+  seedDefaults(); renderPay("a"); renderPay("d");
+  let tab = new URLSearchParams(location.search).get("aba"); if(!tab){ try{ tab = localStorage.getItem("calc_tab"); }catch(e){} }
+  setIdxInfo(false);
+  showTab(tab==="distrato"?"distrato":"atraso");
+  refreshIndices();
+})();
+</script>
+</body>
+</html>
