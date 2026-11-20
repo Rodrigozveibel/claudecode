@@ -157,6 +157,18 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
 .cta .row .btn{flex:1;font-size:13.5px;padding:10px}
 .basis{padding:0 18px 16px;font-size:12.5px;color:var(--muted)}
 .basis b{color:var(--ink-2)}
+.lead{margin:14px 18px 4px;padding:16px;border:1.5px solid var(--accent);background:var(--accent-soft);border-radius:12px}
+.lead h4{margin:0 0 4px;font-size:15px}
+.lead p{margin:0 0 10px;font-size:13px;color:var(--ink-2)}
+.lead form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.lead input[type=text],.lead input[type=email]{background:var(--surface)}
+.lead .chk{grid-column:1/-1;font-size:12px}
+.lead .chk input{width:16px;height:16px}
+.lead button{grid-column:1/-1;justify-content:center;padding:11px}
+.lead .err{grid-column:1/-1;color:var(--bad);font-size:12.5px;min-height:0}
+.lead.done{border-style:solid;background:var(--good-soft);border-color:var(--good);color:var(--good);font-size:14px}
+@media (max-width:480px){.lead form{grid-template-columns:minmax(0,1fr)}}
+body.meeting .lead{display:none}
 details.memo{border-top:1px solid var(--line)}
 details.memo summary{padding:13px 18px;cursor:pointer;font-weight:600;font-size:14px;list-style:none;display:flex;justify-content:space-between}
 details.memo summary:after{content:"+";color:var(--muted)}
@@ -404,8 +416,16 @@ const CONFIG = {
   oab: "OAB/UF 00.000",
   logo: "RZ",                    // 2-3 letras exibidas no topo
   whatsapp: "5500000000000",     // DDI+DDD+número, só dígitos
-  webhookLeads: "",              // opcional: URL que recebe POST JSON a cada clique no WhatsApp (CRM, Zapier, Make, n8n)
-  atualizarIndicesOnline: true   // busca os índices mais recentes no Banco Central ao abrir
+  atualizarIndicesOnline: true,  // busca os índices mais recentes no Banco Central ao abrir
+
+  // ---- Captura de leads e tráfego ----
+  // Recebe {nome, email, tipo, resumo, valores, utm...} via POST a cada lead.
+  // Recomendado: Google Apps Script (planilha + e-mail automático) — ver README.md
+  webhookLeads: "",
+  metaPixelId: "",               // ex.: "123456789012345"  → eventos: PageView, Simulacao, Lead, Contact
+  ga4Id: "",                     // ex.: "G-XXXXXXXXXX"     → eventos: simulacao, generate_lead, contact
+  googleAdsConversao: "",        // ex.: "AW-123456789/AbCdEfGhIj" → conversão disparada no lead
+  politicaPrivacidadeUrl: ""     // link da sua política de privacidade (LGPD)
 };
 
 /* Índices mensais (% a.m.) — fonte: Banco Central / SGS. Séries: IPCA 433, INCC-DI 192, INCC-M 7456, IGP-M 189, Selic 4390 */
@@ -621,6 +641,7 @@ function renderAtraso(){
     host.innerHTML = `<div class="big"><div class="lbl">Ainda não há atraso indenizável</div><div class="val">R$ 0,00</div>
       <div class="sub">${r.tol?"Com a tolerância de 180 dias, o":"O"} prazo da construtora vai até <b>${brDate(r.inicio)}</b>${r.diasAteAtraso?` (faltam ${r.diasAteAtraso} dias)`:""}.</div></div>
       <div class="note warn" style="margin-top:14px"><b>Atenção:</b> a partir dessa data cada mês de atraso passa a gerar indenização de aproximadamente <b>${BRL(r.alugMes)}</b>/mês (0,5% do valor do imóvel). Guarde todos os comprovantes.</div>
+      ${leadHTML("atraso")}
       ${ctaHTML("atraso")}`;
     bindCTA(host,"atraso",r); return r;
   }
@@ -636,6 +657,7 @@ function renderAtraso(){
       <div class="kpi"><div class="l">Atraso indenizável</div><div class="v">${r.dias} dias</div></div>
       <div class="kpi good"><div class="l">Aluguel presumido/mês hoje</div><div class="v">${BRL(r.alugMes)}</div></div>
     </div>
+    ${leadHTML("atraso")}
     <div class="lines">
       <div class="line ${r.usaMultaMin?'dim':''}"><span class="n">Lucros cessantes — conservador<small>${PCT(nv("a_pmin"))} a.m. do valor do imóvel (Tema 996/STJ)</small></span><span class="a">${BRL(r.lcMin)}</span></div>
       <div class="line"><span class="n">Lucros cessantes — favorável<small>${PCT(nv("a_pmax"))} a.m. do valor do imóvel</small></span><span class="a">${BRL(r.lcMax)}</span></div>
@@ -752,6 +774,7 @@ function renderDistrato(){
       <div class="kpi bad"><div class="l">Pelo contrato, a construtora pagaria</div><div class="v">${BRL(r.oferta)}</div></div>
       <div class="kpi good"><div class="l">Diferença que você pode recuperar</div><div class="v">${r.ganho>0?"+ "+BRL(r.ganho):BRL(0)}</div></div>
     </div>
+    ${leadHTML("distrato")}
     <div class="bars">
       ${bar("Tudo o que você pagou, corrigido"+(r.corrAtual?" (+ corretagem)":""), r.corrigido + r.corrAtual, maxBar, "var(--ink-2)")}
       ${bar("Na Justiça (cenário favorável)", r.judMax, maxBar, "var(--good)")}
@@ -784,6 +807,99 @@ function renderDistrato(){
   return r;
 }
 
+/* ===================== LEADS + TRACKING ===================== */
+let LEAD = null; try{ LEAD = JSON.parse(localStorage.getItem("calc_lead")||"null"); }catch(e){}
+const DRAFT = {nome:"", email:""};
+const esc = s => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function leadHTML(tipo){
+  if (LEAD) return `<div class="lead done no-print">✓ Simulação salva, ${esc(LEAD.nome.split(" ")[0])}. Enviamos o resumo para <b>${esc(LEAD.email)}</b>.</div>`;
+  const pol = CONFIG.politicaPrivacidadeUrl ? ` (<a href="${esc(CONFIG.politicaPrivacidadeUrl)}" target="_blank" rel="noopener">política de privacidade</a>)` : "";
+  return `<div class="lead no-print">
+    <h4>Receba esta simulação no seu e-mail</h4>
+    <p>Guarde o cálculo e receba orientações sobre os próximos passos do seu caso.</p>
+    <form novalidate>
+      <input type="text" name="nome" value="${esc(DRAFT.nome)}" placeholder="Seu nome" autocomplete="name" aria-label="Seu nome">
+      <input type="email" name="email" value="${esc(DRAFT.email)}" placeholder="Seu melhor e-mail" autocomplete="email" aria-label="Seu e-mail">
+      <label class="chk"><input type="checkbox" name="ok" checked> <span>Autorizo o contato do escritório sobre o meu caso, conforme a LGPD${pol}.</span></label>
+      <div class="err" aria-live="polite"></div>
+      <button type="submit" class="btn primary">Enviar minha simulação</button>
+    </form></div>`;
+}
+function bindLead(host, tipo, r){
+  const f = host.querySelector(".lead form"); if(!f) return;
+  f.addEventListener("submit", e=>{
+    e.preventDefault();
+    const nome = f.nome.value.trim(), email = f.email.value.trim().toLowerCase(), err = f.querySelector(".err");
+    if (nome.length < 2) { err.textContent = "Informe seu nome."; f.nome.focus(); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { err.textContent = "Informe um e-mail válido."; f.email.focus(); return; }
+    if (!f.ok.checked) { err.textContent = "Precisamos da sua autorização para enviar a simulação."; return; }
+    LEAD = {nome, email}; try{ localStorage.setItem("calc_lead", JSON.stringify(LEAD)); }catch(e){}
+    const payload = {
+      evento: "lead", nome, email, tipo, resumo: resumo(tipo, r),
+      valorMin: Math.round((r.totMin ?? r.judMin ?? 0)*100)/100,
+      valorMax: Math.round((r.totMax ?? r.judMax ?? 0)*100)/100,
+      valorImovel: nv(tipo==="atraso"?"a_valor":"d_valor"),
+      data: new Date().toISOString(), pagina: location.href.split("?")[0], ...getUTM()
+    };
+    sendLead(payload);
+    identify(); track("lead", {tipo, value: payload.valorMax});
+    recalc();
+  });
+}
+function sendLead(payload){
+  if (!CONFIG.webhookLeads) { console.warn("webhookLeads não configurado — lead não enviado", payload); return; }
+  // text/plain + no-cors: evita preflight e funciona com Google Apps Script, Make, Zapier e n8n
+  try { fetch(CONFIG.webhookLeads, {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(payload), keepalive:true}); } catch(e){}
+}
+const UTM_KEYS = ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","gclid","fbclid"];
+function captureUTM(){
+  const q = new URLSearchParams(location.search), o = {};
+  UTM_KEYS.forEach(k=>{ if(q.get(k)) o[k]=q.get(k); });
+  if (Object.keys(o).length) try{ sessionStorage.setItem("calc_utm", JSON.stringify(o)); }catch(e){}
+}
+function getUTM(){ try{ return JSON.parse(sessionStorage.getItem("calc_utm")||"{}"); }catch(e){ return {}; } }
+function initTracking(){
+  if (CONFIG.metaPixelId){
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq("init", CONFIG.metaPixelId, LEAD ? {em:LEAD.email, fn:LEAD.nome.split(" ")[0].toLowerCase()} : {});
+    fbq("track", "PageView");
+  }
+  const gid = CONFIG.ga4Id || (CONFIG.googleAdsConversao||"").split("/")[0];
+  if (gid){
+    const sc = document.createElement("script"); sc.async = true; sc.src = "https://www.googletagmanager.com/gtag/js?id="+gid; document.head.appendChild(sc);
+    window.dataLayer = window.dataLayer || []; window.gtag = function(){ dataLayer.push(arguments); };
+    gtag("js", new Date());
+    if (CONFIG.ga4Id) gtag("config", CONFIG.ga4Id);
+    if (CONFIG.googleAdsConversao) gtag("config", CONFIG.googleAdsConversao.split("/")[0]);
+  }
+}
+function identify(){
+  if (window.fbq && LEAD) fbq("init", CONFIG.metaPixelId, {em:LEAD.email, fn:LEAD.nome.split(" ")[0].toLowerCase()});
+  if (window.gtag && LEAD) gtag("set", "user_data", {email: LEAD.email});
+}
+function track(ev, data={}){
+  try{
+    if (window.fbq){
+      if (ev==="lead") fbq("track","Lead",{content_category:data.tipo, value:data.value||0, currency:"BRL"});
+      else if (ev==="contact") fbq("track","Contact",{content_category:data.tipo});
+      else fbq("trackCustom","Simulacao",{tipo:data.tipo, value:data.value||0, currency:"BRL"});
+    }
+    if (window.gtag){
+      if (ev==="lead"){ gtag("event","generate_lead",{tipo:data.tipo, value:data.value||0, currency:"BRL"});
+        if (CONFIG.googleAdsConversao) gtag("event","conversion",{send_to:CONFIG.googleAdsConversao, value:data.value||0, currency:"BRL"}); }
+      else if (ev==="contact") gtag("event","contact",{tipo:data.tipo});
+      else gtag("event","simulacao",{tipo:data.tipo, value:data.value||0, currency:"BRL"});
+    }
+  }catch(e){}
+}
+const SIM_SENT = {}; let simTmr;
+function trackSimulacao(r){
+  if (!r || r.erro || SIM_SENT[TAB] || document.body.classList.contains("meeting")) return;
+  clearTimeout(simTmr); const tab = TAB;
+  // só conta como simulação após 4s de interação real (evita contar quem só abriu a página)
+  simTmr = setTimeout(()=>{ if (SIM_SENT[tab]) return; SIM_SENT[tab]=1; track("simulacao",{tipo:tab, value:Math.round(r.totMax ?? r.judMax ?? 0)}); }, 4000);
+}
+
 /* ===================== visual helpers ===================== */
 function bar(label, v, max, color){
   return `<div class="bar"><div class="t"><span>${label}</span><b>${BRL(v)}</b></div><div class="tr"><div class="fl" style="width:${Math.max(0,Math.min(100,v/max*100)).toFixed(1)}%;background:${color}"></div></div></div>`;
@@ -806,11 +922,13 @@ function resumo(tipo, r){
   return `Simulação – Distrato${cli?" ("+cli+")":""}\nImóvel: ${BRL(nv("d_valor"))}\nTotal pago: ${BRL(r.nominal)} (atualizado ${BRL(r.corrigido)})\nPelo contrato: ${BRL(r.oferta)}\nNa Justiça: ${r.motivo==="construtora"?BRL(r.judMax):BRL(r.judMin)+" a "+BRL(r.judMax)}`;
 }
 function bindCTA(host, tipo, r){
+  bindLead(host, tipo, r);
   host.querySelectorAll("[data-cta]").forEach(b=>b.addEventListener("click", ()=>{
     const t = resumo(tipo, r);
     if (b.dataset.cta==="wa"){
-      const msg = `Olá! Fiz a simulação no site e gostaria de uma análise do meu caso.\n\n${t}`;
-      if (CONFIG.webhookLeads) { try { fetch(CONFIG.webhookLeads,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tipo, resumo:t, totalMin:r.totMin??r.judMin, totalMax:r.totMax??r.judMax, data:new Date().toISOString(), pagina:location.href})}); } catch(e){} }
+      const msg = `Olá!${LEAD?" Sou "+LEAD.nome+".":""} Fiz a simulação no site e gostaria de uma análise do meu caso.\n\n${t}`;
+      track("contact", {tipo});
+      sendLead({evento:"whatsapp", nome:LEAD?.nome||"", email:LEAD?.email||"", tipo, resumo:t, valorMin:r.totMin??r.judMin??0, valorMax:r.totMax??r.judMax??0, data:new Date().toISOString(), pagina:location.href.split("?")[0], ...getUTM()});
       window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
     }
     if (b.dataset.cta==="pdf"){ printReport(tipo); }
@@ -858,15 +976,15 @@ function toDistratoFromAtraso(){
   showTab("distrato"); window.scrollTo({top:$(".tabs").offsetTop-70, behavior:"smooth"});
 }
 
-let tmr; function recalc(){ clearTimeout(tmr); tmr=setTimeout(()=>{ const r = TAB==="atraso" ? renderAtraso() : renderDistrato(); updateMbar(r); }, 60); }
+let tmr; function recalc(){ clearTimeout(tmr); tmr=setTimeout(()=>{ const r = TAB==="atraso" ? renderAtraso() : renderDistrato(); updateMbar(r); trackSimulacao(r); }, 60); }
 function updateMbar(r){
   const bar=$("#mbar"); if(!r || r.erro){ bar.hidden=true; return; } bar.hidden=false;
   if (TAB==="atraso"){ $("#mbarL").textContent = r.semAtraso ? "Ainda no prazo" : "Indenização estimada"; $("#mbarV").textContent = r.semAtraso ? "R$ 0" : `${BRL0(r.totMin)} a ${BRL0(r.totMax)}`; }
   else { $("#mbarL").textContent = "Devolução na Justiça"; $("#mbarV").textContent = r.motivo==="construtora" ? BRL0(r.judMax) : `${BRL0(r.judMin)} a ${BRL0(r.judMax)}`; }
 }
 $("#mbarGo").addEventListener("click", ()=>{ const el=$("#res-"+TAB); window.scrollTo({top:el.getBoundingClientRect().top+scrollY-74, behavior:"smooth"}); });
-document.addEventListener("input", e=>{ if(e.target.closest(".paylist")||e.target.closest(".gen")) return; if(e.target.matches("input,select")) recalc(); });
-document.addEventListener("change", e=>{ if(e.target.closest(".paylist")||e.target.closest(".gen")) return; if(e.target.matches("[data-money]")) e.target.value = fmtMoneyInput(num(e.target.value)); recalc(); });
+document.addEventListener("input", e=>{ if(e.target.closest(".lead")){ DRAFT[e.target.name]=e.target.value; return; } if(e.target.closest(".paylist")||e.target.closest(".gen")) return; if(e.target.matches("input,select")) recalc(); });
+document.addEventListener("change", e=>{ if(e.target.closest(".lead")) return; if(e.target.closest(".paylist")||e.target.closest(".gen")) return; if(e.target.matches("[data-money]")) e.target.value = fmtMoneyInput(num(e.target.value)); recalc(); });
 
 /* modo reunião */
 $("#meetingBtn").addEventListener("click", ()=>{
@@ -916,6 +1034,7 @@ function setIdxInfo(online){
   $("#footFirm").textContent = `${CONFIG.escritorio} · ${CONFIG.oab}`;
   const t = todayISO(); $("#a_calc").value = t; $("#d_calc").value = t; $("#a_jurData").value = t; $("#d_jurData").value = t;
   if (new URLSearchParams(location.search).has("reuniao")) $("#meetingBtn").click();
+  captureUTM(); initTracking();
   seedDefaults(); renderPay("a"); renderPay("d");
   let tab = new URLSearchParams(location.search).get("aba"); if(!tab){ try{ tab = localStorage.getItem("calc_tab"); }catch(e){} }
   setIdxInfo(false);

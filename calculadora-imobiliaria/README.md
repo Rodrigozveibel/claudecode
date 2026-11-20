@@ -10,10 +10,28 @@ const CONFIG = {
   oab: "OAB/UF 00.000",
   logo: "RZ",
   whatsapp: "5500000000000",   // DDI+DDD+número
-  webhookLeads: "",            // URL p/ receber lead (Zapier/Make/n8n/CRM)
-  atualizarIndicesOnline: true
+  atualizarIndicesOnline: true,
+  webhookLeads: "",            // URL do Apps Script (ou Make/Zapier/n8n/CRM)
+  metaPixelId: "",             // Pixel da Meta
+  ga4Id: "",                   // Google Analytics 4
+  googleAdsConversao: "",      // "AW-XXXX/rótulo"
+  politicaPrivacidadeUrl: ""
 };
 ```
+
+## Captura de leads e tráfego
+- Resultado **sempre aberto**. Logo abaixo do valor aparece o bloco "Receba esta simulação no seu e-mail" (nome + e-mail + consentimento LGPD). Quem já enviou não vê de novo. O bloco fica oculto no modo reunião.
+- **Planilha + e-mail automático:** siga o `apps-script-leads.gs` (Google Apps Script, grátis). Cada lead vira uma linha na planilha com as UTMs, o cliente recebe o resumo por e-mail com botão de WhatsApp e o escritório recebe um aviso.
+- **Eventos para públicos e otimização:**
+
+| Momento | Meta Pixel | GA4 / Google Ads |
+|---|---|---|
+| Abriu a página | `PageView` | page_view |
+| Simulou (4s de interação com resultado) | `Simulacao` (custom, com valor) | `simulacao` |
+| Enviou nome/e-mail | `Lead` (+ correspondência avançada de e-mail) | `generate_lead` + conversão Ads |
+| Clicou no WhatsApp | `Contact` | `contact` |
+
+- UTMs, `gclid` e `fbclid` da URL vão junto com o lead.
 
 ## Uso
 - Landing page: `index.html` (abre na aba Atraso). `?aba=distrato` abre direto no distrato.
