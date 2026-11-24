@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Request
 
-from . import agent, audio, db, digisac
+from . import agent, audio, db, digisac, origem
 from .config import settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -59,7 +59,8 @@ async def webhook(request: Request, secret: str = ""):
     cid = m.get("contactId")
     if not cid or not m.get("id"):
         return {"ok": True}
-    if s.digisac_service_id and m.get("serviceId") != s.digisac_service_id:
+    atendidas = {x for x in [s.digisac_service_id, *s.lista("rcpcc_service_ids")] if x}
+    if atendidas and m.get("serviceId") not in atendidas:
         return {"ok": True}
 
     if m.get("isFromMe"):
@@ -74,7 +75,13 @@ async def webhook(request: Request, secret: str = ""):
     if not db.marcar("processados", m["id"]):
         return {"ok": True}  # webhook repetido
 
-    db.get_conversa(cid)  # garante registro
+    conv = db.get_conversa(cid)  # garante registro
+    # define o fluxo no primeiro contato; conversa "geral" vira RCPCC se o criativo aparecer depois
+    fluxo, motivo = origem.detectar(ev, m)
+    if conv.get("fluxo") is None or (conv["fluxo"] == "geral" and fluxo == "rcpcc"
+                                     and conv["status"] == "triagem"):
+        db.salvar_conversa(cid, fluxo=fluxo, origem=motivo, service_id=m.get("serviceId"))
+        log.info("Contato %s -> fluxo %s (%s)", cid, fluxo, motivo)
     _pendentes.setdefault(cid, []).append(m)
     t = _timers.get(cid)
     if t and not t.done():
@@ -138,12 +145,22 @@ async def _atender(cid: str, msgs: list[dict]):
     conv = db.get_conversa(cid)
     if conv["pausado_ate"] > time.time():
         return
+    if conv["fluxo"] != "rcpcc" and s.outras_areas_modo == "silencio":
+        return  # só atua em lead do criativo; o resto fica com a equipe
     if conv["status"] in ("humano", "agendado", "agendar_manual"):
         return  # equipe já está com o lead
     if conv["status"] == "encerrado":
         conv["status"] = "triagem"  # lead voltou: nova triagem, mesmo histórico
 
     conteudo, foi_audio = await _montar_conteudo(msgs)
+    nota_origem = (f"[sistema: lead veio do anúncio de revisão bancária ({conv['origem']}) - use o fluxo RCPCC]"
+                   if conv["fluxo"] == "rcpcc" else
+                   "[sistema: lead NÃO veio do anúncio de revisão bancária - faça a triagem geral de área; "
+                   "se o caso for revisional de contrato bancário, siga o fluxo RCPCC]")
+    if not conv["mensagens"] or conv["origem"] != db.get_lead(cid).get("_origem_informada"):
+        conteudo.insert(1, {"type": "text", "text": nota_origem})
+        lead = db.get_lead(cid); lead["_origem_informada"] = conv["origem"]
+        db.salvar_lead(cid, lead, lead.get("_score"), lead.get("_classificacao"))
     if conv["followups"]:
         conteudo.insert(1, {"type": "text", "text": "[nota do sistema: antes desta mensagem você enviou "
                             f"{conv['followups']} lembrete(s) automático(s) porque o lead tinha sumido]"})
@@ -157,11 +174,11 @@ async def _atender(cid: str, msgs: list[dict]):
         if foi_audio and audio.audio_disponivel() and len(texto) < 600:
             mp3 = await audio.sintetizar(texto)
             if mp3:
-                await digisac.enviar_audio(cid, mp3)
+                await digisac.enviar_audio(cid, mp3, conv["service_id"])
                 enviado_audio = True
         if not enviado_audio:
             for parte in _quebrar(texto):
-                await digisac.enviar_texto(cid, parte)
+                await digisac.enviar_texto(cid, parte, conv["service_id"])
                 await asyncio.sleep(1.2)
 
     db.salvar_conversa(cid, mensagens=historico, status=ctx.status_novo or conv["status"],
@@ -193,7 +210,7 @@ async def _loop_followup():
                     hora = datetime.now(ZoneInfo(settings().fuso)).hour
                     if not 8 <= hora < 21:
                         continue
-                    await digisac.enviar_texto(c["contact_id"], FOLLOWUPS[n])
+                    await digisac.enviar_texto(c["contact_id"], FOLLOWUPS[n], c["service_id"])
                     db.salvar_conversa(c["contact_id"], followups=n + 1)
         except Exception:
             log.exception("Erro no follow-up")

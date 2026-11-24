@@ -39,9 +39,9 @@ async def _post(path: str, payload: dict) -> dict:
     return data
 
 
-async def enviar_texto(contact_id: str, texto: str) -> dict:
+async def enviar_texto(contact_id: str, texto: str, service_id: str | None = None) -> dict:
     return await _post("/messages", {
-        "text": texto, "contactId": contact_id, "serviceId": settings().digisac_service_id,
+        "text": texto, "contactId": contact_id, "serviceId": service_id or settings().digisac_service_id,
     })
 
 
@@ -52,10 +52,10 @@ async def enviar_texto_numero(numero: str, texto: str) -> dict:
     })
 
 
-async def enviar_audio(contact_id: str, audio_mp3: bytes) -> dict:
+async def enviar_audio(contact_id: str, audio_mp3: bytes, service_id: str | None = None) -> dict:
     return await _post("/messages", {
         "contactId": contact_id,
-        "serviceId": settings().digisac_service_id,
+        "serviceId": service_id or settings().digisac_service_id,
         "file": {
             "base64": base64.b64encode(audio_mp3).decode(),
             "mimetype": "audio/mpeg",
@@ -95,11 +95,12 @@ def _url_arquivo(msg: dict) -> tuple[str | None, str | None]:
     return None, None
 
 
-async def transferir_ticket(contact_id: str, comentario: str) -> None:
+async def transferir_ticket(contact_id: str, comentario: str, departamento_id: str | None = None) -> None:
     s = settings()
     payload = {"comments": comentario}
-    if s.digisac_departamento_advogado_id:
-        payload["departmentId"] = s.digisac_departamento_advogado_id
+    depto = departamento_id or s.digisac_departamento_advogado_id
+    if depto:
+        payload["departmentId"] = depto
     try:
         await _post(f"/contacts/{contact_id}/ticket/transfer", payload)
     except httpx.HTTPError:

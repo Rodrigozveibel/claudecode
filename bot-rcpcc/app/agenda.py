@@ -63,7 +63,7 @@ def _horarios_livres_sync(dias: int = 5, max_opcoes: int = 6) -> list[str]:
     return opcoes
 
 
-def _criar_evento_sync(inicio_iso: str, nome: str, telefone: str, resumo: str, modalidade: str) -> dict:
+def _criar_evento_sync(inicio_iso: str, nome: str, telefone: str, resumo: str) -> dict:
     s = settings()
     svc = _service()
     inicio = datetime.fromisoformat(inicio_iso)
@@ -74,10 +74,10 @@ def _criar_evento_sync(inicio_iso: str, nome: str, telefone: str, resumo: str, m
         "items": [{"id": s.google_calendar_id}]}).execute()["calendars"][s.google_calendar_id]["busy"]
     if busy:
         return {"ok": False, "erro": "Horário acabou de ser ocupado. Ofereça outro."}
-    local = s.link_reuniao_online if modalidade == "online" else "Presencial no escritório"
+    local = s.link_reuniao_online or "Videochamada (link enviado pela equipe)"
     ev = svc.events().insert(calendarId=s.google_calendar_id, body={
         "summary": f"[RCPCC] Reunião - {nome}",
-        "description": f"Telefone: {telefone}\nModalidade: {modalidade}\n\n{resumo}",
+        "description": f"Telefone: {telefone}\nReunião online gratuita\n\n{resumo}",
         "location": local,
         "start": {"dateTime": inicio.isoformat(), "timeZone": s.fuso},
         "end": {"dateTime": fim.isoformat(), "timeZone": s.fuso},
@@ -90,5 +90,5 @@ async def horarios_livres() -> list[str]:
     return await asyncio.to_thread(_horarios_livres_sync)
 
 
-async def criar_evento(inicio_iso: str, nome: str, telefone: str, resumo: str, modalidade: str) -> dict:
-    return await asyncio.to_thread(_criar_evento_sync, inicio_iso, nome, telefone, resumo, modalidade)
+async def criar_evento(inicio_iso: str, nome: str, telefone: str, resumo: str) -> dict:
+    return await asyncio.to_thread(_criar_evento_sync, inicio_iso, nome, telefone, resumo)

@@ -42,6 +42,11 @@ def conn() -> sqlite3.Connection:
             CREATE TABLE IF NOT EXISTS processados (id TEXT PRIMARY KEY, em REAL);
             """
         )
+        cols = {r[1] for r in _conn.execute("PRAGMA table_info(conversas)")}
+        for col, ddl in (("fluxo", "TEXT"), ("origem", "TEXT"), ("service_id", "TEXT")):
+            if col not in cols:
+                _conn.execute(f"ALTER TABLE conversas ADD COLUMN {col} {ddl}")
+        _conn.commit()
     return _conn
 
 
@@ -52,7 +57,8 @@ def get_conversa(contact_id: str) -> dict:
             conn().execute("INSERT INTO conversas(contact_id) VALUES (?)", (contact_id,))
             conn().commit()
             return {"contact_id": contact_id, "mensagens": [], "status": "triagem", "pausado_ate": 0,
-                    "ultimo_contato": 0, "followups": 0, "ticket_id": None, "responde_audio": 0}
+                    "ultimo_contato": 0, "followups": 0, "ticket_id": None, "responde_audio": 0,
+                    "fluxo": None, "origem": None, "service_id": None}
         d = dict(row)
         d["mensagens"] = json.loads(d["mensagens"])
         return d
@@ -104,8 +110,8 @@ def conversas_para_followup(min_horas: float, max_horas: float) -> list[dict]:
     agora = time.time()
     with _lock:
         rows = conn().execute(
-            "SELECT contact_id, followups, ultimo_contato FROM conversas "
-            "WHERE status='triagem' AND followups < 2 AND ultimo_contato > 0 "
+            "SELECT contact_id, followups, ultimo_contato, service_id FROM conversas "
+            "WHERE status='triagem' AND fluxo='rcpcc' AND followups < 2 AND ultimo_contato > 0 "
             "AND ultimo_contato < ? AND ultimo_contato > ? AND pausado_ate < ?",
             (agora - min_horas * 3600, agora - max_horas * 3600, agora),
         ).fetchall()
@@ -115,7 +121,7 @@ def conversas_para_followup(min_horas: float, max_horas: float) -> list[dict]:
 def listar_leads() -> list[dict]:
     with _lock:
         rows = conn().execute(
-            "SELECT l.contact_id, l.dados, l.score, l.classificacao, l.atualizado, c.status "
+            "SELECT l.contact_id, l.dados, l.score, l.classificacao, l.atualizado, c.status, c.fluxo, c.origem "
             "FROM leads l LEFT JOIN conversas c USING(contact_id) ORDER BY l.atualizado DESC"
         ).fetchall()
     out = []

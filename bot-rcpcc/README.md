@@ -29,6 +29,24 @@ Lead (WhatsApp) -> Digisac -> webhook -> este servidor
 - Regras da OAB (Provimento 205/2021) estão no prompt: não promete resultado, não fala de honorários, não orienta
   parar de pagar e se apresenta como assistente virtual.
 
+## Lead do criativo x leads de outras áreas
+
+Cada contato novo é classificado na primeira mensagem:
+
+| Como o robô sabe que veio do criativo RCPCC | Confiabilidade |
+|---|---|
+| **Conexão/número exclusivo da campanha** (`RCPCC_SERVICE_IDS`) | total |
+| **Texto pré-preenchido do link do anúncio** (ex.: `wa.me/55119...?text=Quero%20revisar%20meu%20contrato%20%23RCPCC`) | alta: a maioria não apaga |
+| ID do anúncio Click-to-WhatsApp (`RCPCC_AD_IDS`) | só se o Digisac repassar o referral da Meta |
+| Palavra-chave na mensagem ("juros abusivos", "revisional") | média |
+
+- **Veio do criativo** -> fluxo RCPCC completo (análise BACEN, nota, reunião online gratuita).
+- **Não veio** e `OUTRAS_AREAS_MODO=triagem` -> o robô descobre a área (consumidor, trabalhista, execução, família...),
+  coleta nome, cidade, resumo e urgência em 4 ou 5 perguntas e transfere para o departamento da área
+  (`DEPARTAMENTOS_POR_AREA`). Área que você não atende: recusa educada. Se no meio da conversa virar revisão
+  bancária, o robô muda para o fluxo RCPCC sozinho.
+- **Não veio** e `OUTRAS_AREAS_MODO=silencio` -> o robô não responde; o atendimento fica com a equipe como hoje.
+
 ## Treinar o robô (sua parte)
 
 Tudo o que estiver em `knowledge/*.md` entra no "cérebro" do robô. Já vêm 3 arquivos:
