@@ -41,10 +41,10 @@ Cada contato novo é classificado na primeira mensagem:
 | Palavra-chave na mensagem ("juros abusivos", "revisional") | média |
 
 - **Veio do criativo** -> fluxo RCPCC completo (análise BACEN, nota, reunião online gratuita).
-- **Não veio** e `OUTRAS_AREAS_MODO=triagem` -> o robô descobre a área (consumidor, trabalhista, execução, família...),
-  coleta nome, cidade, resumo e urgência em 4 ou 5 perguntas e transfere para o departamento da área
-  (`DEPARTAMENTOS_POR_AREA`). Área que você não atende: recusa educada. Se no meio da conversa virar revisão
-  bancária, o robô muda para o fluxo RCPCC sozinho.
+- **Não veio** e `OUTRAS_AREAS_MODO=filtro` (padrão) -> o robô faz no máximo **uma pergunta** para saber se o
+  assunto é bancário. Revisão de contrato: segue o fluxo RCPCC. Outro assunto bancário (golpe, conta bloqueada):
+  passa para você. Qualquer outro assunto: transfere na hora para o departamento de atendimento
+  (`DIGISAC_DEPARTAMENTO_ATENDIMENTO_ID`), sem falar de área com o lead e sem recusar ninguém.
 - **Não veio** e `OUTRAS_AREAS_MODO=silencio` -> o robô não responde; o atendimento fica com a equipe como hoje.
 
 ## Treinar o robô (sua parte)

@@ -29,9 +29,6 @@ def _nullable(t: str, desc: str, **extra) -> dict:
     return {"type": [t, "null"], "description": desc, **extra}
 
 
-AREAS = ["bancario_outros", "consumidor", "imobiliario", "execucao_cobranca", "defesa_execucao",
-         "trabalhista", "familia_sucessoes", "previdenciario", "empresarial", "criminal", "outra"]
-
 LEAD_FIELDS = {
     "nome": _nullable("string", "Nome do lead"),
     "cidade_uf": _nullable("string", "Cidade/UF"),
@@ -90,16 +87,9 @@ TOOLS = [
                 "preferencia": _nullable("string", "Se não houver agenda automática: dia/turno preferido"),
                 "resumo_caso": {"type": "string", "description": "Resumo objetivo do caso para o advogado"},
             }),
-    _strict("encaminhar_area",
-            "Lead que NÃO é revisional bancária: encaminha ao departamento da área com o resumo da triagem.",
-            {
-                "area": {"type": "string", "enum": AREAS},
-                "atendemos": {"type": "boolean", "description": "A área está entre as que o escritório atende"},
-                "urgente": {"type": "boolean", "description": "Prazo correndo, audiência, citação, bloqueio, despejo etc."},
-                "nome": _nullable("string", "Nome do lead"),
-                "cidade_uf": _nullable("string", "Cidade/UF"),
-                "resumo_caso": {"type": "string", "description": "O que aconteceu, contra quem, quando, o que o lead quer"},
-            }),
+    _strict("transferir_atendimento",
+            "Assunto que não é bancário: passa para a equipe de atendimento geral, sem triagem.",
+            {"resumo": {"type": "string", "description": "Uma ou duas frases sobre o que o lead pediu"}}),
     _strict("transferir_humano",
             "Passa a conversa para a equipe humana e avisa o advogado.",
             {
@@ -192,25 +182,14 @@ async def executar_tool(ctx: Contexto, nome: str, args: dict) -> str:
             return json.dumps({"ok": True, "pendente_confirmacao": True,
                                "instrucao": "Diga que a equipe confirma o horário em breve por aqui."})
 
-        if nome == "encaminhar_area":
-            lead = db.get_lead(ctx.contact_id)
-            lead.update({"area": args["area"], "nome": args.get("nome") or lead.get("nome"),
-                         "cidade_uf": args.get("cidade_uf") or lead.get("cidade_uf"),
-                         "resumo_area": args["resumo_caso"], "urgente": args["urgente"]})
-            classe = "outra_area" if args["atendemos"] else "area_nao_atendida"
-            db.salvar_lead(ctx.contact_id, lead, None, classe)
-            if not args["atendemos"]:
-                ctx.status_novo = "encerrado"
-                ctx.eventos.append("encerrar")
-                return json.dumps({"ok": True, "instrucao": "Explique com educação que o escritório não atua "
-                                   "nessa área e sugira procurar a OAB/Defensoria da cidade. Não indique advogados."})
+        if nome == "transferir_atendimento":
             ctx.status_novo = "humano"
-            depto = settings().departamentos().get(args["area"])
-            tit = ("URGENTE - " if args["urgente"] else "") + f"Lead {args['area']}"
-            await _avisar_advogado(ctx, tit, args["resumo_caso"])
-            await digisac.transferir_ticket(ctx.contact_id, f"{tit}: {args['resumo_caso']}", depto)
-            return json.dumps({"ok": True, "instrucao": "Diga que a equipe da área vai continuar o atendimento "
-                               "por aqui e, se urgente, que já sinalizou prioridade."})
+            lead = db.get_lead(ctx.contact_id)
+            lead["resumo_outro_assunto"] = args["resumo"]
+            db.salvar_lead(ctx.contact_id, lead, None, "outro_assunto")
+            await digisac.transferir_ticket(ctx.contact_id, f"Não bancário: {args['resumo']}",
+                                            settings().digisac_departamento_atendimento_id or None)
+            return json.dumps({"ok": True})
 
         if nome == "transferir_humano":
             ctx.status_novo = "humano"

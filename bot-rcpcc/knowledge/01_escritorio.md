@@ -7,16 +7,3 @@
   gratuita, depois de analisar o contrato. [Se você trabalhar com êxito, descreva aqui o que o robô PODE dizer.]
 - Documentos para a reunião (pode mandar antes por aqui): contrato (ou print do app do banco), RG/CNH,
   comprovante de residência, carnê/extrato das parcelas pagas.
-
-# Áreas atendidas pelo escritório (o robô só encaminha estas; as outras ele recusa com educação)
-[Apague as que você NÃO atende]
-- bancario_outros
-- consumidor
-- imobiliario
-- execucao_cobranca
-- defesa_execucao
-- trabalhista
-- familia_sucessoes
-- previdenciario
-- empresarial
-- criminal

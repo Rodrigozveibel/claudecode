@@ -1,4 +1,4 @@
-"""Decide se a conversa veio do criativo RCPCC (fluxo completo) ou é de outra área (triagem geral).
+"""Decide se a conversa veio do criativo RCPCC (fluxo completo) ou não (filtro rápido de uma pergunta).
 
 Ordem de confiabilidade:
 1. Conexão dedicada à campanha (serviceId) - 100% confiável.

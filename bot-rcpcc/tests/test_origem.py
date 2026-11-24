@@ -47,3 +47,17 @@ def test_lead_geral_vira_rcpcc_quando_cita_o_criativo(monkeypatch, tmp_path):
     assert db.get_conversa("c2")["fluxo"] == "geral"
     c.post("/webhook/digisac?secret=x", json=ev("b", "vi o anúncio, juros abusivos no carro"))
     assert db.get_conversa("c2")["fluxo"] == "rcpcc"
+
+
+def test_transferir_atendimento_usa_departamento_geral(monkeypatch, tmp_path):
+    _cfg(monkeypatch, tmp_path, DIGISAC_DEPARTAMENTO_ATENDIMENTO_ID="dep-geral")
+    from app import agent, digisac
+    chamadas = []
+
+    async def fake_transfer(cid, comentario, depto=None):
+        chamadas.append((cid, depto))
+    monkeypatch.setattr(digisac, "transferir_ticket", fake_transfer)
+    ctx = agent.Contexto(contact_id="t1")
+    asyncio.run(agent.executar_tool(ctx, "transferir_atendimento", {"resumo": "dúvida trabalhista"}))
+    assert chamadas == [("t1", "dep-geral")] and ctx.status_novo == "humano"
+    assert "transferir_atendimento" in [t["name"] for t in agent.TOOLS]

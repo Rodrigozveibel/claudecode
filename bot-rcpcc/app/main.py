@@ -155,8 +155,7 @@ async def _atender(cid: str, msgs: list[dict]):
     conteudo, foi_audio = await _montar_conteudo(msgs)
     nota_origem = (f"[sistema: lead veio do anúncio de revisão bancária ({conv['origem']}) - use o fluxo RCPCC]"
                    if conv["fluxo"] == "rcpcc" else
-                   "[sistema: lead NÃO veio do anúncio de revisão bancária - faça a triagem geral de área; "
-                   "se o caso for revisional de contrato bancário, siga o fluxo RCPCC]")
+                   "[sistema: lead NÃO veio do anúncio de revisão bancária - aplique o FILTRO RÁPIDO]")
     if not conv["mensagens"] or conv["origem"] != db.get_lead(cid).get("_origem_informada"):
         conteudo.insert(1, {"type": "text", "text": nota_origem})
         lead = db.get_lead(cid); lead["_origem_informada"] = conv["origem"]
