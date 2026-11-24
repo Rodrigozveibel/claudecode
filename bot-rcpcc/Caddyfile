@@ -1,0 +1,4 @@
+# troque pelo seu domínio (ex.: robo.rz.adv.br apontando para o IP do servidor)
+robo.SEUDOMINIO.com.br {
+    reverse_proxy robo:8000
+}

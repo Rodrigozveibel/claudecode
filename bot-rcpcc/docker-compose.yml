@@ -1,0 +1,20 @@
+services:
+  robo:
+    build: .
+    restart: always          # volta sozinho se cair ou se o servidor reiniciar
+    env_file: .env
+    volumes:
+      - ./data:/app/data     # banco de dados e credenciais do Google ficam fora do container
+      - ./knowledge:/app/knowledge
+    ports:
+      - "127.0.0.1:8000:8000"
+  caddy:                     # HTTPS automático (Digisac exige URL https)
+    image: caddy:2
+    restart: always
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    depends_on: [robo]
+volumes:
+  caddy_data:
