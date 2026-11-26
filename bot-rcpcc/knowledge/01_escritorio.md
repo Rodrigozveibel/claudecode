@@ -8,4 +8,7 @@
 - Prazo estimado de acompanhamento da ação: cerca de 14 meses (pode variar conforme o tribunal).
 - Honorários: R$ 1.970,00 iniciais (parcelável) + 20% sobre a economia gerada (parcelável). A Dani só informa os
   valores que a ferramenta devolver.
+- Economia gerada (base dos 20%): diferença entre o que o banco cobra hoje e o que o cliente efetivamente vai pagar
+  ao final, por acordo ou decisão judicial. Ex. de cálculo (não é previsão): banco cobra R$ 50 mil, acordo fecha em
+  R$ 20 mil -> economia R$ 30 mil -> êxito R$ 6 mil. Sem economia, não há êxito.
 - Dívidas acima de R$ 30 mil: proposta só na reunião online gratuita com o Dr. Rodrigo.

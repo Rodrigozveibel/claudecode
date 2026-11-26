@@ -41,10 +41,15 @@ def calcular(valor_divida: float) -> dict:
         "levar_para_reuniao": False,
         "inicial": {"valor": s.honorarios_fixo, "valor_fmt": _brl(s.honorarios_fixo),
                     "parcelas_max": n, "valor_parcela_fmt": _brl(s.honorarios_fixo / n)},
-        "exito": {"pct_sobre_economia": s.honorarios_exito_pct, "parcelamento": exito_parc},
+        "exito": {"pct_sobre_economia": s.honorarios_exito_pct, "parcelamento": exito_parc,
+                  "definicao_economia": "Economia gerada = valor que o banco cobra hoje MENOS o valor que o cliente efetivamente vai pagar ao final, por acordo ou por decisão judicial.",
+                  "exemplo_ilustrativo": "Só para entender o cálculo, sem ser previsão: se o banco cobra R$ 50 mil e "
+                                         "ao final o valor a pagar fica em R$ 20 mil, a economia é R$ 30 mil e o êxito "
+                                         "é 20% disso, R$ 6 mil. Se não houver economia, não há êxito."},
         "instrucao": "Apresente: honorário inicial (à vista ou parcelado, com estes valores) + êxito de X% sobre a "
-                     "economia que for gerada, pago só se houver economia, e que também pode ser parcelado. Não "
-                     "estime quanto será a economia. Termine com 'Vamos começar?'.",
+                     "economia que for gerada, pago só se houver economia, e que também pode ser parcelado. Se o lead "
+                     "perguntar o que é economia, use a definição e o exemplo ilustrativo, deixando claro que é só "
+                     "exemplo de cálculo. Nunca estime a economia do caso dele. Termine com 'Vamos começar?'.",
     }
 
 

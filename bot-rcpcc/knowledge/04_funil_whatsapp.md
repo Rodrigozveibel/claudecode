@@ -62,8 +62,8 @@ um áudio explicando. Capricha, isso ajuda o seu processo!"
 ## 8A. Oferta - dívida até R$ 30 mil (fecha no WhatsApp)
 "[Nome], para te representar e fazer todos os serviços que expliquei, os honorários são em dois momentos:
 - Honorário inicial de R$ 1.970,00, que pode ser pago à vista ou parcelado em até [n]x de R$ [parcela];
-- Honorário de êxito de 20% sobre a economia que conseguirmos gerar na sua dívida. Ele só existe se houver
-  economia, e também pode ser parcelado.
+- Honorário de êxito de 20% sobre a economia que conseguirmos gerar na sua dívida, ou seja, a diferença entre o que
+  o banco cobra hoje e o que você vai pagar no final. Ele só existe se houver economia, e também pode ser parcelado.
 Se tiver qualquer dúvida sobre o processo ou os custos, estou aqui. Vamos começar?"
 (Valores SEMPRE da ferramenta calcular_honorarios.)
 

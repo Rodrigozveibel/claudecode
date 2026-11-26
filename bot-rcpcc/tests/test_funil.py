@@ -80,3 +80,9 @@ def test_prompt_usa_dani_e_escritorio(monkeypatch, tmp_path):
     from app.prompts import system_prompt
     p = system_prompt(False, False)
     assert "Dani" in p and "R Zveibel Advogados" in p and "R$ 30.000" in p
+
+
+def test_definicao_da_economia_na_proposta(monkeypatch, tmp_path):
+    _cfg(monkeypatch, tmp_path)
+    e = honorarios.calcular(25_000)["exito"]
+    assert "MENOS" in e["definicao_economia"] and "R$ 6 mil" in e["exemplo_ilustrativo"]
