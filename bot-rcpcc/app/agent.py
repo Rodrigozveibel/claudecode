@@ -95,6 +95,7 @@ TOOLS = [
                 "inicio_iso": _nullable("string", "Horário escolhido, exatamente como veio de consultar_horarios"),
                 "preferencia": _nullable("string", "Se não houver agenda automática: dia/turno preferido"),
                 "resumo_caso": {"type": "string", "description": "Resumo objetivo do caso para o advogado"},
+                "email": _nullable("string", "E-mail do lead, se ele informou"),
             }),
     _strict("calcular_honorarios",
             "Calcula a proposta de honorários a partir da dívida total. Use SÓ na etapa de oferta. Se a dívida "
@@ -208,6 +209,14 @@ async def executar_tool(ctx: Contexto, nome: str, args: dict) -> str:
                                               ctx.telefone, args["resumo_caso"])
                 if r.get("ok"):
                     ctx.status_novo = "agendado"
+                    db.salvar_conversa(ctx.contact_id, reuniao_avisos=0,
+                                       reuniao_inicio=datetime.fromisoformat(r["inicio"]).timestamp())
+                    if args.get("email"):
+                        lead["email"] = args["email"]
+                        db.salvar_lead(ctx.contact_id, lead, lead.get("_score"), lead.get("_classificacao"))
+                    r["instrucao"] = ("Confirme dia e hora, envie a mensagem de compromisso (agenda travada) e diga "
+                                      "que o link vai por aqui alguns minutos antes. O sistema envia lembrete 2h "
+                                      "antes e o link 15 min antes, automaticamente.")
                     await _avisar_advogado(ctx, "Reunião agendada (RCPCC)",
                                            f"{r['inicio']} - {r['local']}\n{args['resumo_caso']}")
                     await digisac.transferir_ticket(ctx.contact_id, f"Reunião marcada {r['inicio']}. {args['resumo_caso']}")

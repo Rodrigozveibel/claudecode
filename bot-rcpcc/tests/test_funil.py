@@ -86,3 +86,36 @@ def test_definicao_da_economia_na_proposta(monkeypatch, tmp_path):
     _cfg(monkeypatch, tmp_path)
     e = honorarios.calcular(25_000)["exito"]
     assert "MENOS" in e["definicao_economia"] and "R$ 6 mil" in e["exemplo_ilustrativo"]
+
+
+def test_lembretes_de_reuniao(monkeypatch, tmp_path):
+    import time
+    _cfg(monkeypatch, tmp_path, LINK_REUNIAO_ONLINE="https://meet.google.com/abc")
+    from app import main
+    enviados = []
+
+    async def fake_texto(cid, texto, sid=None):
+        enviados.append(texto)
+    monkeypatch.setattr(main.digisac, "enviar_texto", fake_texto)
+
+    async def uma_volta():
+        t = asyncio.create_task(main._loop_lembrete_reuniao())
+        await asyncio.sleep(0.05); t.cancel()
+
+    db.get_conversa("r1"); db.salvar_conversa("r1", reuniao_inicio=time.time() + 3600, reuniao_avisos=0)
+    asyncio.run(uma_volta())
+    assert "lembrar" in enviados[-1]
+    db.salvar_conversa("r1", reuniao_inicio=time.time() + 600)
+    asyncio.run(uma_volta())
+    assert "meet.google.com/abc" in enviados[-1]
+    n = len(enviados)
+    asyncio.run(uma_volta())
+    assert len(enviados) == n  # não repete
+
+
+def test_base_tem_os_materiais_novos(monkeypatch, tmp_path):
+    _cfg(monkeypatch, tmp_path)
+    from app.prompts import base_conhecimento
+    b = base_conhecimento()
+    assert "Glossário de objeções" in b and "[CORRIGIDO]" in b and "Compromisso" in b
+    assert "70%" not in b

@@ -43,7 +43,8 @@ def conn() -> sqlite3.Connection:
             """
         )
         cols = {r[1] for r in _conn.execute("PRAGMA table_info(conversas)")}
-        for col, ddl in (("fluxo", "TEXT"), ("origem", "TEXT"), ("service_id", "TEXT")):
+        for col, ddl in (("fluxo", "TEXT"), ("origem", "TEXT"), ("service_id", "TEXT"),
+                         ("reuniao_inicio", "REAL"), ("reuniao_avisos", "INTEGER DEFAULT 0")):
             if col not in cols:
                 _conn.execute(f"ALTER TABLE conversas ADD COLUMN {col} {ddl}")
         _conn.commit()
@@ -130,3 +131,15 @@ def listar_leads() -> list[dict]:
         d["dados"] = json.loads(d["dados"])
         out.append(d)
     return out
+
+
+def reunioes_proximas(horas: float = 3) -> list[dict]:
+    """Reuniões que começam nas próximas `horas` (ou começaram há até 15 min) e ainda têm aviso pendente."""
+    agora = time.time()
+    with _lock:
+        rows = conn().execute(
+            "SELECT contact_id, service_id, reuniao_inicio, reuniao_avisos FROM conversas "
+            "WHERE reuniao_inicio IS NOT NULL AND reuniao_avisos < 2 AND reuniao_inicio BETWEEN ? AND ?",
+            (agora - 900, agora + horas * 3600),
+        ).fetchall()
+    return [dict(r) for r in rows]

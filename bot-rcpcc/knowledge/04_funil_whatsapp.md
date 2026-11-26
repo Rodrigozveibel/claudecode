@@ -52,7 +52,7 @@ até o encerramento."
 ## 6. Objeções
 "Ficou alguma dúvida sobre como funciona a revisão? Se tiver qualquer preocupação, pode falar.
 Nossa prioridade é você entender bem o processo antes de decidir. E é bom não deixar para depois, porque juros e
-encargos continuam correndo." (Responder com o glossário 03_faq.md.)
+encargos continuam correndo." (Responder com o glossário 03_objecoes.md.)
 
 ## 7. História (antes do preço)
 "Claro, já te passo os valores. Antes, queria entender um pouco da sua história, porque ela vai para a ação: o que
@@ -68,11 +68,7 @@ Se tiver qualquer dúvida sobre o processo ou os custos, estou aqui. Vamos come�
 (Valores SEMPRE da ferramenta calcular_honorarios.)
 
 ## 8B. Dívida acima de R$ 30 mil (vai para reunião)
-"[Nome], pelo tamanho e pela importância do seu caso, o Dr. Rodrigo faz questão de analisar pessoalmente antes de
-te apresentar a proposta. A reunião é online, por videochamada, e gratuita, dura cerca de 30 minutos. Qual destes
-horários fica melhor para você?" (oferecer 2 ou 3 horários)
-Se o lead pedir valores: "O Dr. apresenta a proposta na reunião, depois de olhar o seu contrato. Assim ela fica
-certinha para o seu caso."
+Seguir a sequência de 06_reuniao.md. Honorários só na reunião.
 
 ## 9. Fechamento
 "Que ótimo! Para darmos início à revisão dos seus contratos, preciso formalizar o contrato e coletar os documentos.

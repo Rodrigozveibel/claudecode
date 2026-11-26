@@ -13,7 +13,7 @@ Abordagem -> qualificação (tipos de contrato, dívida, atraso, cobranças, car
   coleta dos dados com **validação de CPF** -> você recebe "CONTRATO FECHADO" e envia contrato, procuração e cobrança;
 - **acima de R$ 30 mil:** sem preço no WhatsApp; a Dani agenda reunião online gratuita com o advogado.
 
-Os roteiros ficam em `knowledge/04_funil_whatsapp.md` e as objeções em `knowledge/03_faq.md`. Edite à vontade.
+Os roteiros ficam em `knowledge/04_funil_whatsapp.md` e as objeções em `knowledge/03_objecoes.md`, o FAQ em `knowledge/05_faq_nicho.md` e a sequência de reunião em `knowledge/06_reuniao.md`. Edite à vontade.
 Valores e limite vêm do `.env` (`HONORARIOS_*`, `LIMITE_FECHAMENTO_WHATSAPP`): a IA nunca inventa preço.
 
 ## Como funciona
@@ -63,7 +63,7 @@ Cada contato novo é classificado na primeira mensagem:
 Tudo o que estiver em `knowledge/*.md` entra no "cérebro" do robô. Já vêm 3 arquivos:
 - `01_escritorio.md` -> **preencha** (endereço, política de honorários, nº OAB).
 - `02_teses_bancario.md` -> súmulas e temas do STJ usados na triagem.
-- `03_faq.md` -> respostas padrão.
+- `03_objecoes.md`, `05_faq_nicho.md`, `06_reuniao.md` -> objeções, FAQ do nicho e sequência de reunião.
 
 Para acrescentar material (artigos, roteiro de vendas, decisões do seu TJ), crie novos `.md` nessa pasta e reinicie.
 Prefira resumo objetivo a colar 300 páginas de PDF: o robô decide melhor com regras claras.

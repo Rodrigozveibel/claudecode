@@ -20,9 +20,10 @@ log = logging.getLogger("main")
 @asynccontextmanager
 async def _lifespan(_app):
     db.conn()
-    task = asyncio.create_task(_loop_followup())
+    tasks = [asyncio.create_task(_loop_followup()), asyncio.create_task(_loop_lembrete_reuniao())]
     yield
-    task.cancel()
+    for t in tasks:
+        t.cancel()
 
 
 app = FastAPI(title="Robô RCPCC", lifespan=_lifespan)
@@ -147,7 +148,7 @@ async def _atender(cid: str, msgs: list[dict]):
         return
     if conv["fluxo"] != "rcpcc" and s.outras_areas_modo == "silencio":
         return  # só atua em lead do criativo; o resto fica com a equipe
-    if conv["status"] in ("humano", "agendado", "agendar_manual", "fechado"):
+    if conv["status"] in ("humano", "agendar_manual", "fechado"):
         return  # equipe já está com o lead
     if conv["status"] == "encerrado":
         conv["status"] = "triagem"  # lead voltou: nova triagem, mesmo histórico
@@ -238,3 +239,30 @@ async def _loop_followup():
         except Exception:
             log.exception("Erro no follow-up")
         await asyncio.sleep(600)
+
+
+async def _loop_lembrete_reuniao():
+    """Anti no-show: lembrete 2h antes e link 15 min antes da reunião."""
+    while True:
+        try:
+            s = settings()
+            tz = ZoneInfo(s.fuso)
+            agora = time.time()
+            for r in db.reunioes_proximas():
+                ini = r["reuniao_inicio"]
+                hora = datetime.fromtimestamp(ini, tz).strftime("%H:%M")
+                nome = (db.get_lead(r["contact_id"]).get("nome") or "").split(" ")[0]
+                nome = f", {nome}" if nome else ""
+                if r["reuniao_avisos"] == 0 and ini - agora <= 2 * 3600 and ini - agora > 15 * 60:
+                    await digisac.enviar_texto(r["contact_id"], f"Oi{nome}! Passando para lembrar da nossa reunião "
+                                               f"online hoje às {hora} com o Dr. Rodrigo. Está confirmado?",
+                                               r["service_id"])
+                    db.salvar_conversa(r["contact_id"], reuniao_avisos=1)
+                elif ini - agora <= 15 * 60:
+                    link = s.link_reuniao_online or "(a equipe envia o link em instantes)"
+                    await digisac.enviar_texto(r["contact_id"], f"Oi{nome}, nossa reunião começa às {hora}. "
+                                               f"É só clicar no link: {link}", r["service_id"])
+                    db.salvar_conversa(r["contact_id"], reuniao_avisos=2)
+        except Exception:
+            log.exception("Erro no lembrete de reunião")
+        await asyncio.sleep(60)
