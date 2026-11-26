@@ -82,6 +82,15 @@ Endereço com CEP:
 E-mail:
 Telefone:
 Valor atual da dívida:"
-Depois: enviar_material(checklist) ou, sem arquivo, pedir: RG/CNH, CPF, comprovante de residência recente,
-contratos (ou prints do app), extratos/faturas das dívidas e comprovante de renda.
+Depois, peça os documentos (checklist do escritório; peça só os que se aplicam ao caso):
+- Documento de identidade (RG ou CNH)
+- Comprovante de renda
+- Comprovante de residência (não é obrigatório)
+- Extrato da conta dos últimos 6 meses
+- Contrato do empréstimo/financiamento (ou print do app do banco)
+- Contratos anteriores, se a dívida veio de renegociação
+- Contrato globalizado, se houve unificação de dívidas
+- Últimas 3 faturas, se for cartão de crédito
+A procuração o escritório envia para assinatura. Planilha do BACEN, conversão de taxa e laudo de cálculo são
+feitos pelo escritório: não peça ao cliente.
 Com os dados (incluindo à vista ou parcelado e em quantas vezes): registrar_fechamento. A equipe envia contrato e procuração para assinatura digital e o pagamento.

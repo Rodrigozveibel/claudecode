@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 import anthropic
 
-from . import agenda, audio, bacen, db, digisac, honorarios
+from . import agenda, audio, bacen, db, digisac, documentos, honorarios
 from .config import settings
 from .prompts import system_prompt
 from .score import pontuar
@@ -111,6 +111,8 @@ TOOLS = [
             "procuração e cobrança. Chame quando tiver todos os dados (null no que faltar, e peça o resto).",
             {
                 "nome_completo": {"type": "string"},
+                "nacionalidade": _nullable("string", "Padrão: brasileiro(a)"),
+                "banco": _nullable("string", "Banco/financeira contra quem será a ação"),
                 "profissao": _nullable("string", ""),
                 "estado_civil": _nullable("string", ""),
                 "rg": _nullable("string", ""),
@@ -160,6 +162,34 @@ async def _avisar_advogado(ctx: Contexto, titulo: str, corpo: str) -> None:
             await digisac.enviar_texto_numero(s.advogado_whatsapp, texto)
         except Exception:
             log.exception("Falha ao avisar advogado")
+
+
+async def _enviar_documentos(ctx: Contexto, fechamento: bool) -> list[str]:
+    """Gera contrato/procuração (no fechamento) e pré-laudo, e manda para o advogado revisar."""
+    s = settings()
+    lead = db.get_lead(ctx.contact_id)
+    try:
+        pacote = await documentos.gerar_pacote(ctx.contact_id, lead, fechamento)
+    except Exception:
+        log.exception("Falha ao gerar documentos de %s", ctx.contact_id)
+        return []
+    nomes = [n for n, _, _ in pacote]
+    if s.advogado_whatsapp:
+        for i, (nome, dados, mime) in enumerate(pacote):
+            try:
+                legenda = ""
+                if i == 0:
+                    falta = documentos.pendencias_escritorio()
+                    legenda = ("Minutas para revisar" +
+                               (f" (preencha no .env: {', '.join(falta)})" if falta else ""))
+                await digisac.enviar_arquivo_numero(s.advogado_whatsapp, dados, mime, nome, legenda)
+            except Exception:
+                log.exception("Falha ao enviar %s ao advogado", nome)
+    if fechamento and s.enviar_documentos_ao_cliente:
+        for nome, dados, mime in pacote:
+            if nome.endswith(".pdf") and not nome.startswith("pre-laudo"):
+                await digisac.enviar_arquivo(ctx.contact_id, dados, mime, nome, ctx.service_id)
+    return nomes
 
 
 async def executar_tool(ctx: Contexto, nome: str, args: dict) -> str:
@@ -214,6 +244,7 @@ async def executar_tool(ctx: Contexto, nome: str, args: dict) -> str:
                     if args.get("email"):
                         lead["email"] = args["email"]
                         db.salvar_lead(ctx.contact_id, lead, lead.get("_score"), lead.get("_classificacao"))
+                    await _enviar_documentos(ctx, fechamento=False)
                     r["instrucao"] = ("Confirme dia e hora, envie a mensagem de compromisso (agenda travada) e diga "
                                       "que o link vai por aqui alguns minutos antes. O sistema envia lembrete 2h "
                                       "antes e o link 15 min antes, automaticamente.")
@@ -263,8 +294,10 @@ async def executar_tool(ctx: Contexto, nome: str, args: dict) -> str:
                 return json.dumps({"ok": False, "erro": "CPF inválido. Peça para o lead conferir e reenviar."})
             lead = db.get_lead(ctx.contact_id)
             lead["contratante"] = args
+            if args.get("banco"):
+                lead["banco"] = args["banco"]
             db.salvar_lead(ctx.contact_id, lead, lead.get("_score"), "fechado")
-            faltam = [k for k, v in args.items() if v in (None, "")]
+            faltam = [k for k, v in args.items() if v in (None, "") and k not in ("nacionalidade", "parcelas")]
             ctx.status_novo = "fechado"
             prop = lead.get("proposta") or {}
             pag = args["forma_pagamento"] + (f" {args['parcelas']}x" if args.get("parcelas") else "")
@@ -274,6 +307,7 @@ async def executar_tool(ctx: Contexto, nome: str, args: dict) -> str:
                                    f"Êxito: {(prop.get('exito') or {}).get('pct_sobre_economia')}% da economia\n"
                                    f"Documentos recebidos: {'sim' if args['documentos_recebidos'] else 'NÃO'}\n"
                                    f"Faltando: {', '.join(faltam) or 'nada'}")
+            docs = await _enviar_documentos(ctx, fechamento=True)
             await digisac.transferir_ticket(ctx.contact_id, f"FECHADO ({pag}). Emitir contrato/procuração/cobrança.")
             return json.dumps({"ok": True, "faltando": faltam,
                                "instrucao": "Agradeça, diga que a equipe envia agora o contrato e a procuração "

@@ -13,6 +13,11 @@ Abordagem -> qualificação (tipos de contrato, dívida, atraso, cobranças, car
   coleta dos dados com **validação de CPF** -> você recebe "CONTRATO FECHADO" e envia contrato, procuração e cobrança;
 - **acima de R$ 30 mil:** sem preço no WhatsApp; a Dani agenda reunião online gratuita com o advogado.
 
+**Documentos automáticos (no timbrado `templates/timbrado.pdf`, em PDF e Word):**
+- no fechamento: contrato de honorários e procuração preenchidos com os dados do cliente + pré-laudo de juros;
+- no agendamento de reunião: pré-laudo, para o advogado chegar à reunião com o cálculo pronto.
+Tudo chega no WhatsApp do advogado como MINUTA para revisar (`ENVIAR_DOCUMENTOS_AO_CLIENTE=false`).
+
 Os roteiros ficam em `knowledge/04_funil_whatsapp.md` e as objeções em `knowledge/03_objecoes.md`, o FAQ em `knowledge/05_faq_nicho.md` e a sequência de reunião em `knowledge/06_reuniao.md`. Edite à vontade.
 Valores e limite vêm do `.env` (`HONORARIOS_*`, `LIMITE_FECHAMENTO_WHATSAPP`): a IA nunca inventa preço.
 
