@@ -55,14 +55,14 @@ class Settings(BaseSettings):
     limite_fechamento_whatsapp: float = 30000.0
     # ===== Dados para contrato e procuração (o que faltar sai como [PREENCHER] e você é avisado) =====
     escritorio_razao_social: str = "R ZVEIBEL ADVOGADOS"
-    escritorio_cnpj: str = ""
-    escritorio_registro_oab: str = ""          # registro da sociedade na OAB/SP
+    escritorio_cnpj: str = "23.481.388/0001-95"
+    escritorio_registro_oab: str = "117.209"          # registro da sociedade na OAB/SP
     escritorio_endereco: str = "Av. Itália, 928, 6º andar, salas 608/609"
-    escritorio_cidade: str = ""                # cidade da sede e do foro (ex.: Taubaté/SP)
+    escritorio_cidade: str = "Taubaté/SP"                # cidade da sede e do foro (ex.: Taubaté/SP)
     advogado_nome_completo: str = "RODRIGO ZVEIBEL GONÇALVES"
     advogado_oab: str = "OAB/SP 347.600"
     advogado_cpf: str = ""
-    advogado_estado_civil: str = ""
+    advogado_estado_civil: str = "casado"
     # contrato e procuração vão primeiro para você revisar; true = a Dani também envia ao cliente
     enviar_documentos_ao_cliente: bool = False
     # follow-up depois de 24h sem resposta só funciona em WhatsApp não oficial ou com template aprovado

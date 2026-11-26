@@ -53,7 +53,7 @@ def test_pacote_completo_no_timbrado(monkeypatch, tmp_path):
                                                                    ["procuracao-maria.pdf"])).pages)
     proc = " ".join(proc.split())
     assert "em que é réu" not in proc and "98 e 99" in proc
-    assert "CNPJ" in D.pendencias_escritorio()
+    assert "CNPJ" not in D.pendencias_escritorio()
 
 
 def test_pre_laudo_sem_dados_nao_gera(monkeypatch, tmp_path):

@@ -259,7 +259,7 @@ def contrato(c: dict, banco: str | None, valor_divida: float | None) -> list[Blo
         Bloco("subtitulo", "DO OBJETO DO CONTRATO"),
         Bloco("texto", f"**Cláusula 1ª.** O presente contrato tem como objeto a prestação de serviços advocatícios "
                        f"visando à propositura de **AÇÃO REVISIONAL DE CONTRATO BANCÁRIO** a ser movida em desfavor "
-                       f"de **{_v(banco).upper()}**."),
+                       f"de **{_v(banco).upper().rstrip(".")}**."),
         Bloco("texto", "**Parágrafo único.** O objeto específico desta prestação de serviços é ajuizar a demanda, "
                        "acompanhar a parte contratante em eventual audiência designada e proceder ao acompanhamento "
                        "do processo, inclusive na interposição dos recursos cabíveis."),
@@ -355,7 +355,7 @@ def procuracao(c: dict, banco: str | None) -> list[Bloco]:
                        "autarquia ou órgão federal, estadual ou municipal, e praticar todos os demais atos "
                        "necessários ao integral cumprimento deste mandato, podendo ainda substabelecer, no todo ou em "
                        "parte, com ou sem reserva de poderes, especialmente para a propositura e o acompanhamento de "
-                       f"**AÇÃO REVISIONAL DE CONTRATO BANCÁRIO** em face de **{_v(banco).upper()}**."),
+                       f"**AÇÃO REVISIONAL DE CONTRATO BANCÁRIO** em face de **{_v(banco).upper().rstrip(".")}**."),
         Bloco("subtitulo", "DECLARAÇÃO DE HIPOSSUFICIÊNCIA ECONÔMICA"),
         Bloco("texto", "Sob as penas da lei, nos termos dos arts. 98 e 99 do Código de Processo Civil, DECLARO que não "
                        "disponho de recursos suficientes para pagar as custas, as despesas processuais e os "

@@ -5,7 +5,7 @@
   É ESTE o perfil que a Dani envia aos leads de bancário. O perfil @rzveibeladvogados é o institucional do
   escritório (aparece no papel timbrado); se o lead citar, confirme que também é do escritório, mas não envie.
 - Atuação em revisão de contratos e dívidas bancárias, com base no Código de Defesa do Consumidor.
-- Atendemos clientes de todo o Brasil, 100% online. Quando o lead quiser falar com o advogado antes de contratar,
+- Sede em Taubaté/SP (Av. Itália, 928, 6º andar, salas 608/609). Atendemos clientes de todo o Brasil, 100% online. Quando o lead quiser falar com o advogado antes de contratar,
   a reunião é online (videochamada) e gratuita.
 - Prazo estimado de acompanhamento da ação: cerca de 14 meses (pode variar conforme o tribunal).
 - Honorários: R$ 1.970,00 iniciais (parcelável) + 20% sobre a economia gerada (parcelável). A Dani só informa os
