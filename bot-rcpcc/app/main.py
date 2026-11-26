@@ -147,7 +147,7 @@ async def _atender(cid: str, msgs: list[dict]):
         return
     if conv["fluxo"] != "rcpcc" and s.outras_areas_modo == "silencio":
         return  # só atua em lead do criativo; o resto fica com a equipe
-    if conv["status"] in ("humano", "agendado", "agendar_manual"):
+    if conv["status"] in ("humano", "agendado", "agendar_manual", "fechado"):
         return  # equipe já está com o lead
     if conv["status"] == "encerrado":
         conv["status"] = "triagem"  # lead voltou: nova triagem, mesmo histórico
@@ -165,7 +165,7 @@ async def _atender(cid: str, msgs: list[dict]):
                             f"{conv['followups']} lembrete(s) automático(s) porque o lead tinha sumido]"})
     contato = await digisac.get_contato(cid)
     ctx = agent.Contexto(contact_id=cid, telefone=(contato.get("data") or {}).get("number")
-                         or contato.get("number") or "")
+                         or contato.get("number") or "", service_id=conv["service_id"])
 
     texto, historico = await agent.responder(ctx, conv["mensagens"], conteudo)
     if texto:
@@ -192,26 +192,47 @@ def _quebrar(texto: str) -> list[str]:
     return partes[:4] if len(partes) <= 4 else partes[:3] + ["\n\n".join(partes[3:])]
 
 
+# (status, nº do lembrete, horas mínimas, horas máximas sem resposta, mensagem, material, fora da janela 24h)
 FOLLOWUPS = [
-    "Oi! Conseguiu ver minha última mensagem? Se preferir, pode me mandar uma foto do contrato que eu adianto a análise.",
-    "Passando só para saber se ainda quer que o advogado analise seu contrato. Se não for o momento, sem problema, é só me avisar.",
+    ("triagem", 0, 3, 20, "Oi{nome}! Conseguiu ver minha última mensagem? Se preferir, me manda uma foto do "
+     "contrato que eu já adianto a análise.", None, False),
+    ("triagem", 1, 20, 23, "Passando só para saber se ainda quer que a gente analise seus contratos bancários. "
+     "Se não for o momento, sem problema, é só me avisar.", None, False),
+    ("oferta", 0, 20, 23, "Olá{nome}, notamos que ainda não recebemos sua confirmação para iniciarmos a revisão "
+     "dos seus contratos bancários. Entendemos que entrar com uma ação revisional é uma decisão importante e "
+     "estamos à disposição para esclarecer qualquer dúvida. Conte com a nossa equipe.", None, False),
+    ("oferta", 1, 44, 70, "Olá{nome}, coloco nossa equipe novamente à disposição para esclarecer dúvidas sobre a "
+     "revisão dos seus contratos e sobre o nosso formato de trabalho. Vou deixar a seguir um material para você "
+     "conhecer um pouco mais o escritório.", "apresentacao", True),
 ]
 
 
 async def _loop_followup():
-    """Reengaja leads que pararam de responder (3h e 20h depois), dentro da janela de 24h do WhatsApp."""
+    """Reengaja leads que pararam de responder, conforme a etapa do funil."""
+    from pathlib import Path
+    import mimetypes
+    pasta = Path(__file__).resolve().parent.parent / "knowledge" / "materiais"
     while True:
         try:
-            for n, (min_h, max_h) in enumerate([(3, 20), (20, 23)]):
-                for c in db.conversas_para_followup(min_h, max_h):
-                    if c["followups"] != n:
+            s = settings()
+            hora = datetime.now(ZoneInfo(s.fuso)).hour
+            if 8 <= hora < 21:
+                for status, n, min_h, max_h, msg, material, fora in FOLLOWUPS:
+                    if fora and not s.followup_fora_janela_24h:
                         continue
-                    hora = datetime.now(ZoneInfo(settings().fuso)).hour
-                    if not 8 <= hora < 21:
-                        continue
-                    await digisac.enviar_texto(c["contact_id"], FOLLOWUPS[n], c["service_id"])
-                    db.salvar_conversa(c["contact_id"], followups=n + 1)
+                    for c in db.conversas_para_followup(min_h, max_h, status):
+                        if c["followups"] != n:
+                            continue
+                        nome = (db.get_lead(c["contact_id"]).get("nome") or "").split(" ")[0]
+                        await digisac.enviar_texto(c["contact_id"], msg.format(nome=f", {nome}" if nome else ""),
+                                                   c["service_id"])
+                        if material and pasta.exists():
+                            for f in sorted(pasta.glob(f"{material}*"))[:2]:
+                                await digisac.enviar_arquivo(
+                                    c["contact_id"], f.read_bytes(),
+                                    mimetypes.guess_type(f.name)[0] or "application/octet-stream",
+                                    f.name, c["service_id"])
+                        db.salvar_conversa(c["contact_id"], followups=n + 1)
         except Exception:
             log.exception("Erro no follow-up")
         await asyncio.sleep(600)
-

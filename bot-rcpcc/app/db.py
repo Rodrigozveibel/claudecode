@@ -106,14 +106,14 @@ def existe(tabela: str, msg_id: str) -> bool:
         return conn().execute(f"SELECT 1 FROM {tabela} WHERE id=?", (msg_id,)).fetchone() is not None
 
 
-def conversas_para_followup(min_horas: float, max_horas: float) -> list[dict]:
+def conversas_para_followup(min_horas: float, max_horas: float, status: str = "triagem") -> list[dict]:
     agora = time.time()
     with _lock:
         rows = conn().execute(
             "SELECT contact_id, followups, ultimo_contato, service_id FROM conversas "
-            "WHERE status='triagem' AND fluxo='rcpcc' AND followups < 2 AND ultimo_contato > 0 "
+            "WHERE status=? AND fluxo='rcpcc' AND followups < 2 AND ultimo_contato > 0 "
             "AND ultimo_contato < ? AND ultimo_contato > ? AND pausado_ate < ?",
-            (agora - min_horas * 3600, agora - max_horas * 3600, agora),
+            (status, agora - min_horas * 3600, agora - max_horas * 3600, agora),
         ).fetchall()
     return [dict(r) for r in rows]
 

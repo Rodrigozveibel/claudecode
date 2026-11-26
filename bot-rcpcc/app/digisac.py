@@ -52,16 +52,20 @@ async def enviar_texto_numero(numero: str, texto: str) -> dict:
     })
 
 
-async def enviar_audio(contact_id: str, audio_mp3: bytes, service_id: str | None = None) -> dict:
-    return await _post("/messages", {
+async def enviar_arquivo(contact_id: str, dados: bytes, mimetype: str, nome: str,
+                         service_id: str | None = None, legenda: str = "") -> dict:
+    payload = {
         "contactId": contact_id,
         "serviceId": service_id or settings().digisac_service_id,
-        "file": {
-            "base64": base64.b64encode(audio_mp3).decode(),
-            "mimetype": "audio/mpeg",
-            "name": "audio.mp3",
-        },
-    })
+        "file": {"base64": base64.b64encode(dados).decode(), "mimetype": mimetype, "name": nome},
+    }
+    if legenda:
+        payload["text"] = legenda
+    return await _post("/messages", payload)
+
+
+async def enviar_audio(contact_id: str, audio_mp3: bytes, service_id: str | None = None) -> dict:
+    return await enviar_arquivo(contact_id, audio_mp3, "audio/mpeg", "audio.mp3", service_id)
 
 
 async def baixar_arquivo(msg: dict) -> tuple[bytes, str] | None:

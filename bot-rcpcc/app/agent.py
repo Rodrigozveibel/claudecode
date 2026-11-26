@@ -3,13 +3,15 @@ from __future__ import annotations
 
 import json
 import logging
+import mimetypes
+from pathlib import Path
 from dataclasses import dataclass, field
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import anthropic
 
-from . import agenda, audio, bacen, db, digisac
+from . import agenda, audio, bacen, db, digisac, honorarios
 from .config import settings
 from .prompts import system_prompt
 from .score import pontuar
@@ -51,6 +53,13 @@ LEAD_FIELDS = {
     "ja_tem_advogado_ou_acao": _nullable("boolean", "Já tem advogado ou ação sobre o contrato"),
     "quitado_ha_mais_de_10_anos": _nullable("boolean", "Contrato quitado há mais de 10 anos"),
     "superendividado": _nullable("boolean", "Várias dívidas comprometendo o mínimo existencial"),
+    "tipos_contrato": _nullable("string", "Tipos de contrato com dívida (cartão, pessoal, consignado, veículo...)"),
+    "valor_divida_atual": _nullable("number", "Valor total da dívida acumulada hoje em R$"),
+    "inadimplente_desde": _nullable("string", "Desde quando está inadimplente (MM/AAAA ou texto)"),
+    "cobranca_administrativa": _nullable("boolean", "Já recebeu cobrança administrativa"),
+    "cobranca_judicial": _nullable("boolean", "Já recebeu cobrança/ação judicial"),
+    "cartoes_bloqueados": _nullable("boolean", "Cartões de crédito/débito bloqueados pelo banco"),
+    "motivo_inadimplencia": _nullable("string", "O que impediu de pagar (desemprego, doença...) - vai para a ação"),
     "observacoes": _nullable("string", "Resumo livre do caso"),
 }
 
@@ -87,6 +96,31 @@ TOOLS = [
                 "preferencia": _nullable("string", "Se não houver agenda automática: dia/turno preferido"),
                 "resumo_caso": {"type": "string", "description": "Resumo objetivo do caso para o advogado"},
             }),
+    _strict("calcular_honorarios",
+            "Calcula a proposta de honorários (boleto, cartão, à vista + êxito) a partir da dívida. Use SÓ na "
+            "etapa de oferta, depois da geração de valor e da explicação do serviço.",
+            {"valor_divida": {"type": "number", "description": "Dívida total atual em R$"}}),
+    _strict("enviar_material",
+            "Envia ao lead um material do escritório: decisao (decisão judicial semelhante, anonimizada), "
+            "depoimentos, apresentacao (material do escritório) ou checklist (documentos para a ação).",
+            {"tipo": {"type": "string", "enum": ["decisao", "depoimentos", "apresentacao", "checklist"]},
+             "legenda": _nullable("string", "Texto curto que acompanha o arquivo")}),
+    _strict("registrar_fechamento",
+            "Lead aceitou a proposta: salva os dados do contratante e passa para a equipe emitir contrato, "
+            "procuração e cobrança. Chame quando tiver todos os dados (null no que faltar, e peça o resto).",
+            {
+                "nome_completo": {"type": "string"},
+                "profissao": _nullable("string", ""),
+                "estado_civil": _nullable("string", ""),
+                "rg": _nullable("string", ""),
+                "cpf": {"type": "string"},
+                "endereco_com_cep": _nullable("string", ""),
+                "email": _nullable("string", ""),
+                "telefone": _nullable("string", ""),
+                "valor_divida": _nullable("number", ""),
+                "forma_pagamento": {"type": "string", "enum": ["boleto", "cartao", "avista"]},
+                "documentos_recebidos": {"type": "boolean", "description": "Já mandou os documentos do checklist"},
+            }),
     _strict("transferir_atendimento",
             "Assunto que não é bancário: passa para a equipe de atendimento geral, sem triagem.",
             {"resumo": {"type": "string", "description": "Uma ou duas frases sobre o que o lead pediu"}}),
@@ -98,8 +132,9 @@ TOOLS = [
                 "resumo_caso": {"type": "string"},
             }),
     _strict("encerrar_atendimento",
-            "Encerra o atendimento de lead sem perfil, depois de se despedir.",
-            {"motivo": {"type": "string"}}),
+            "Encerra o atendimento de lead fora do escopo, depois de se despedir. Se o lead aceitou receber "
+            "conteúdos do escritório, informe o e-mail para a newsletter.",
+            {"motivo": {"type": "string"}, "email_newsletter": _nullable("string", "")}),
 ]
 
 
@@ -107,6 +142,7 @@ TOOLS = [
 class Contexto:
     contact_id: str
     telefone: str = ""
+    service_id: str | None = None
     status_novo: str | None = None
     eventos: list[str] = field(default_factory=list)
 
@@ -182,6 +218,50 @@ async def executar_tool(ctx: Contexto, nome: str, args: dict) -> str:
             return json.dumps({"ok": True, "pendente_confirmacao": True,
                                "instrucao": "Diga que a equipe confirma o horário em breve por aqui."})
 
+        if nome == "calcular_honorarios":
+            r = honorarios.calcular(args["valor_divida"])
+            if r.get("configurado"):
+                ctx.status_novo = "oferta"
+                lead = db.get_lead(ctx.contact_id)
+                lead["proposta"] = r
+                db.salvar_lead(ctx.contact_id, lead, lead.get("_score"), lead.get("_classificacao"))
+            return json.dumps(r, ensure_ascii=False)
+
+        if nome == "enviar_material":
+            pasta = Path(__file__).resolve().parent.parent / "knowledge" / "materiais"
+            arquivos = sorted(pasta.glob(f"{args['tipo']}*"))[:3] if pasta.exists() else []
+            if not arquivos:
+                return json.dumps({"enviado": False, "instrucao": "Material indisponível. Não mencione que "
+                                   "iria enviar; siga a conversa (para checklist, escreva a lista da base)."})
+            for i, f in enumerate(arquivos):
+                mime = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
+                await digisac.enviar_arquivo(ctx.contact_id, f.read_bytes(), mime, f.name, ctx.service_id,
+                                             (args.get("legenda") or "") if i == 0 else "")
+            return json.dumps({"enviado": True, "arquivos": [f.name for f in arquivos],
+                               "instrucao": "O arquivo já foi enviado; não repita o conteúdo dele."})
+
+        if nome == "registrar_fechamento":
+            if not honorarios.cpf_valido(args["cpf"]):
+                return json.dumps({"ok": False, "erro": "CPF inválido. Peça para o lead conferir e reenviar."})
+            lead = db.get_lead(ctx.contact_id)
+            lead["contratante"] = args
+            db.salvar_lead(ctx.contact_id, lead, lead.get("_score"), "fechado")
+            faltam = [k for k, v in args.items() if v in (None, "")]
+            ctx.status_novo = "fechado"
+            prop = lead.get("proposta") or {}
+            pag = args["forma_pagamento"]
+            valor_pag = (prop.get(pag) or {}) if prop else {}
+            await _avisar_advogado(ctx, "CONTRATO FECHADO - emitir contrato, procuração e cobrança",
+                                   f"{args['nome_completo']} | CPF {args['cpf']}\n"
+                                   f"Pagamento: {pag} {valor_pag}\n"
+                                   f"Êxito: {prop.get('exito_pct_sobre_reducao')}% da redução\n"
+                                   f"Documentos recebidos: {'sim' if args['documentos_recebidos'] else 'NÃO'}\n"
+                                   f"Faltando: {', '.join(faltam) or 'nada'}")
+            await digisac.transferir_ticket(ctx.contact_id, f"FECHADO ({pag}). Emitir contrato/procuração/cobrança.")
+            return json.dumps({"ok": True, "faltando": faltam,
+                               "instrucao": "Agradeça, diga que a equipe envia agora o contrato e a procuração "
+                                            "para assinatura digital e as instruções de pagamento por aqui."})
+
         if nome == "transferir_atendimento":
             ctx.status_novo = "humano"
             lead = db.get_lead(ctx.contact_id)
@@ -199,6 +279,10 @@ async def executar_tool(ctx: Contexto, nome: str, args: dict) -> str:
             return json.dumps({"ok": True, "instrucao": "Avise que um membro da equipe vai continuar o atendimento."})
 
         if nome == "encerrar_atendimento":
+            if args.get("email_newsletter"):
+                lead = db.get_lead(ctx.contact_id)
+                lead["email_newsletter"] = args["email_newsletter"]
+                db.salvar_lead(ctx.contact_id, lead, lead.get("_score"), "newsletter")
             ctx.status_novo = "encerrado"
             ctx.eventos.append("encerrar")
             return json.dumps({"ok": True})

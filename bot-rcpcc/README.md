@@ -1,9 +1,19 @@
-# Robô de triagem RCPCC (revisional de contrato bancário) no Digisac
+# Dani - atendente virtual RCPCC do R Zveibel Advogados (Digisac)
 
 Atende leads no WhatsApp pelo Digisac, 24h por dia: entende o caso, **lê foto ou PDF do contrato**, **calcula a taxa
 real e compara com a média do Banco Central** da modalidade no mês da contratação, dá uma nota ao lead e **só marca
 reunião com quem tem potencial**. Ouve áudio (transcrição) e responde em áudio (opcional). Leads urgentes
 (busca e apreensão) vão direto para você.
+
+## Funil (fechamento no próprio WhatsApp)
+Abordagem -> qualificação (tipos de contrato, dívida, atraso, cobranças, cartões bloqueados, foto do contrato)
+-> geração de valor -> decisões e depoimentos (`knowledge/materiais/`) -> o que está incluso -> objeções
+-> história do lead (áudio) -> **proposta calculada pelo sistema** (boleto, cartão, à vista + êxito)
+-> coleta dos dados com **validação de CPF** -> você recebe "CONTRATO FECHADO" no WhatsApp e envia contrato,
+procuração e cobrança. Quem quiser falar com o advogado antes ganha reunião online gratuita.
+
+Os roteiros ficam em `knowledge/04_funil_whatsapp.md` e as objeções em `knowledge/03_faq.md`. Edite à vontade.
+Os valores de honorários vêm do `.env` (`HONORARIOS_*`): a IA nunca inventa preço.
 
 ## Como funciona
 

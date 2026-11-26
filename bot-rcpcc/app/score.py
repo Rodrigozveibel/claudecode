@@ -15,7 +15,7 @@ def pontuar(d: dict) -> tuple[int, str, list[str]]:
     motivos: list[str] = []
     bloqueios: list[str] = []
 
-    valor = float(d.get("valor_financiado") or 0)
+    valor = max(float(d.get("valor_financiado") or 0), float(d.get("valor_divida_atual") or 0))
     if valor >= 50_000:
         pts += 25; motivos.append("valor alto (>= R$50 mil)")
     elif valor >= 20_000:
@@ -45,6 +45,9 @@ def pontuar(d: dict) -> tuple[int, str, list[str]]:
 
     if d.get("risco_busca_apreensao"):
         pts += 12; motivos.append("URGENTE: atraso em veículo / risco de busca e apreensão")
+
+    if d.get("cobranca_judicial"):
+        pts += 5; motivos.append("já há cobrança judicial")
 
     if d.get("decisor") is False:
         pts -= 15; motivos.append("quem fala não é o titular")

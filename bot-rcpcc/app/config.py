@@ -42,9 +42,21 @@ class Settings(BaseSettings):
     duracao_reuniao_min: int = 30
     fuso: str = "America/Sao_Paulo"
 
-    nome_escritorio: str = "Escritório"
-    nome_advogado: str = "o advogado"
-    nome_assistente: str = "Ana"
+    nome_escritorio: str = "R Zveibel Advogados"
+    nome_advogado: str = "Dr. Rodrigo Zveibel"
+    nome_assistente: str = "Dani"
+
+    # ===== Honorários (funil de fechamento no WhatsApp). 0 = desligado: o robô não cita valores. =====
+    honorarios_inicial_pct: float = 0.0        # % da dívida (funil sugere 5 a 10)
+    honorarios_inicial_minimo: float = 0.0     # piso dos honorários iniciais em R$
+    honorarios_exito_pct: float = 0.0          # % da redução obtida (funil sugere 7 a 10)
+    honorarios_entrada_pct: float = 19.0       # entrada no boleto (% do total)
+    honorarios_parcelas_boleto: int = 10
+    honorarios_parcelas_cartao: int = 10
+    honorarios_acrescimo_cartao_pct: float = 7.5
+    honorarios_desconto_avista_pct: float = 15.0
+    # follow-up depois de 24h sem resposta só funciona em WhatsApp não oficial ou com template aprovado
+    followup_fora_janela_24h: bool = False
 
     def lista(self, campo: str) -> list[str]:
         return [x.strip() for x in getattr(self, campo).split(",") if x.strip()]
