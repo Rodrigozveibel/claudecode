@@ -241,6 +241,24 @@ async def _loop_followup():
         await asyncio.sleep(600)
 
 
+async def _enviar_ou_alertar(r: dict, texto: str, hora: str) -> None:
+    """Envia ao lead. Se o WhatsApp recusar (API oficial fora da janela de 24h), avisa o advogado."""
+    try:
+        await digisac.enviar_texto(r["contact_id"], texto, r["service_id"])
+    except Exception:
+        log.warning("Lembrete recusado para %s; avisando advogado", r["contact_id"])
+        lead = db.get_lead(r["contact_id"])
+        if settings().advogado_whatsapp:
+            try:
+                await digisac.enviar_texto_numero(
+                    settings().advogado_whatsapp,
+                    f"*Lembrete de reunião NÃO enviado* (WhatsApp bloqueou: lead sem responder há mais de 24h).\n"
+                    f"Lead: {lead.get('nome') or r['contact_id']} - reunião às {hora}.\n"
+                    f"Mande o link manualmente ou ligue para ele. Mensagem: {texto}")
+            except Exception:
+                log.exception("Falha ao avisar advogado do lembrete")
+
+
 async def _loop_lembrete_reuniao():
     """Anti no-show: lembrete 2h antes e link 15 min antes da reunião."""
     while True:
@@ -254,14 +272,13 @@ async def _loop_lembrete_reuniao():
                 nome = (db.get_lead(r["contact_id"]).get("nome") or "").split(" ")[0]
                 nome = f", {nome}" if nome else ""
                 if r["reuniao_avisos"] == 0 and ini - agora <= 2 * 3600 and ini - agora > 15 * 60:
-                    await digisac.enviar_texto(r["contact_id"], f"Oi{nome}! Passando para lembrar da nossa reunião "
-                                               f"online hoje às {hora} com o Dr. Rodrigo. Está confirmado?",
-                                               r["service_id"])
+                    await _enviar_ou_alertar(r, f"Oi{nome}! Passando para lembrar da nossa reunião online hoje às "
+                                             f"{hora} com o Dr. Rodrigo. Está confirmado?", hora)
                     db.salvar_conversa(r["contact_id"], reuniao_avisos=1)
                 elif ini - agora <= 15 * 60:
                     link = s.link_reuniao_online or "(a equipe envia o link em instantes)"
-                    await digisac.enviar_texto(r["contact_id"], f"Oi{nome}, nossa reunião começa às {hora}. "
-                                               f"É só clicar no link: {link}", r["service_id"])
+                    await _enviar_ou_alertar(r, f"Oi{nome}, nossa reunião começa às {hora}. É só clicar no link: "
+                                             f"{link}", hora)
                     db.salvar_conversa(r["contact_id"], reuniao_avisos=2)
         except Exception:
             log.exception("Erro no lembrete de reunião")

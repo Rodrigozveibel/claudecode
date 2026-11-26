@@ -119,3 +119,26 @@ def test_base_tem_os_materiais_novos(monkeypatch, tmp_path):
     b = base_conhecimento()
     assert "Glossário de objeções" in b and "[CORRIGIDO]" in b and "Compromisso" in b
     assert "70%" not in b
+
+
+def test_lembrete_bloqueado_avisa_advogado(monkeypatch, tmp_path):
+    import time
+    _cfg(monkeypatch, tmp_path, ADVOGADO_WHATSAPP="5511999999999")
+    from app import main
+    avisos = []
+
+    async def recusa(*a, **k):
+        raise RuntimeError("fora da janela de 24h")
+
+    async def para_advogado(numero, texto):
+        avisos.append(texto)
+    monkeypatch.setattr(main.digisac, "enviar_texto", recusa)
+    monkeypatch.setattr(main.digisac, "enviar_texto_numero", para_advogado)
+    db.get_conversa("r2"); db.salvar_conversa("r2", reuniao_inicio=time.time() + 600, reuniao_avisos=0)
+
+    async def uma_volta():
+        t = asyncio.create_task(main._loop_lembrete_reuniao())
+        await asyncio.sleep(0.05); t.cancel()
+    asyncio.run(uma_volta())
+    assert avisos and "NÃO enviado" in avisos[0]
+    assert db.get_conversa("r2")["reuniao_avisos"] == 2
