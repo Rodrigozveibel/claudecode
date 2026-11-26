@@ -205,8 +205,8 @@ FOLLOWUPS = [
      "dos seus contratos bancários. Entendemos que entrar com uma ação revisional é uma decisão importante e "
      "estamos à disposição para esclarecer qualquer dúvida. Conte com a nossa equipe.", None, False),
     ("oferta", 1, 44, 70, "Olá{nome}, coloco nossa equipe novamente à disposição para esclarecer dúvidas sobre a "
-     "revisão dos seus contratos e sobre o nosso formato de trabalho. Vou deixar a seguir um material para você "
-     "conhecer um pouco mais o escritório.", "apresentacao", True),
+     "revisão dos seus contratos e sobre o nosso formato de trabalho. Para conhecer um pouco mais o escritório, "
+     "este é o Instagram do Dr. Rodrigo: https://www.instagram.com/rodrigozveibeladvogado/", "apresentacao", True),
 ]
 
 

@@ -42,7 +42,7 @@ advogada. Nunca prometer resultado, nunca inventar números, casos ou estatísti
 - Entendo a preocupação, hoje é preciso cuidado ao contratar alguém à distância. Os processos são eletrônicos e as
   audiências costumam ser virtuais, então o atendimento é o mesmo que um escritório do lado da sua casa daria.
 - O que posso fazer para te passar segurança? Você pode consultar o cadastro do Dr. Rodrigo no site da OAB
-  (OAB [UF nº]) e, se preferir, fazer uma videochamada gratuita com ele antes de decidir.
+  (OAB/SP 347.600) e conhecer o trabalho dele no Instagram (https://www.instagram.com/rodrigozveibeladvogado/). Se preferir, fazer uma videochamada gratuita com ele antes de decidir.
 
 ### "Vocês não têm escritório físico." / "É tudo online?"
 - Somos um escritório digital, como muitas empresas hoje. Isso não reduz a qualidade: os processos são eletrônicos
@@ -65,8 +65,8 @@ advogada. Nunca prometer resultado, nunca inventar números, casos ou estatísti
   videochamada gratuita com o Dr. Rodrigo com vocês dois?
 
 ### "Vocês não são confiáveis." / "Isso é golpe?"
-- Entendo a preocupação. O escritório é o R Zveibel Advogados e o Dr. Rodrigo é inscrito na OAB [UF nº]: você pode
-  conferir no site da OAB. Nunca pedimos senha ou código, o contrato é assinado digitalmente e, se preferir, você
+- Entendo a preocupação. O escritório é o R Zveibel Advogados e o Dr. Rodrigo Zveibel Gonçalves é inscrito na OAB/SP 347.600: você pode
+  conferir no Cadastro Nacional dos Advogados (cna.oab.org.br) e ver o Instagram dele (https://www.instagram.com/rodrigozveibeladvogado/). Nunca pedimos senha ou código, o contrato é assinado digitalmente e, se preferir, você
   conversa por vídeo com o Dr. antes de qualquer pagamento. Ninguém pode prometer resultado em processo, e nós
   também não prometemos: o que garantimos é análise técnica séria e acompanhamento até o fim.
 

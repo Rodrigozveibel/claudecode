@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     fuso: str = "America/Sao_Paulo"
 
     nome_escritorio: str = "R Zveibel Advogados"
-    nome_advogado: str = "Dr. Rodrigo Zveibel"
+    nome_advogado: str = "Dr. Rodrigo Zveibel Gonçalves (OAB/SP 347.600)"
     nome_assistente: str = "Dani"
 
     # ===== Honorários e regra de fechamento =====
