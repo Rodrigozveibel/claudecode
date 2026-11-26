@@ -1,52 +1,50 @@
 """Proposta de honorários calculada em código. A IA só apresenta; nunca inventa valor.
 
-Modelo do funil: honorários iniciais (% da dívida, com mínimo) + êxito (% da redução obtida).
-Opções: boleto (entrada + parcelas), cartão (parcelado com acréscimo) ou à vista (com desconto).
+Modelo do escritório: honorário inicial FIXO (parcelável) + êxito de X% sobre a economia gerada (parcelável).
+Dívidas acima do limite não recebem proposta pelo WhatsApp: vão para reunião online com o advogado.
 """
 from __future__ import annotations
 
-import math
 import re
 
 from .config import settings
 
 
-def _charm(v: float) -> int:
-    """Arredonda para cima terminando em 7 (ex.: 488 -> 497), como no funil."""
-    return int(math.ceil((v + 3) / 10) * 10 - 3)
-
-
 def configurado() -> bool:
-    return settings().honorarios_inicial_pct > 0
+    return settings().honorarios_fixo > 0
+
+
+def vai_para_reuniao(valor_divida: float | None) -> bool:
+    return bool(valor_divida) and valor_divida > settings().limite_fechamento_whatsapp
+
+
+def _brl(v: float) -> str:
+    return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def calcular(valor_divida: float) -> dict:
     s = settings()
+    if vai_para_reuniao(valor_divida):
+        return {"levar_para_reuniao": True,
+                "instrucao": f"Dívida acima de {_brl(s.limite_fechamento_whatsapp)}: NÃO apresente valores. Diga "
+                             "que, pelo tamanho e importância do caso, o Dr. analisa pessoalmente numa reunião "
+                             "online gratuita, e agende com consultar_horarios/agendar_reuniao."}
     if not configurado():
         return {"configurado": False,
-                "instrucao": "Honorários ainda não configurados pelo escritório. Não cite valores: diga que a "
-                             "equipe envia a proposta e chame transferir_humano com motivo 'enviar proposta'."}
-    base = max(s.honorarios_inicial_minimo, valor_divida * s.honorarios_inicial_pct / 100)
-
-    n_b = s.honorarios_parcelas_boleto
-    entrada = _charm(base * s.honorarios_entrada_pct / 100)
-    parc_b = _charm((base - entrada) / n_b)
-    total_b = entrada + parc_b * n_b
-
-    n_c = s.honorarios_parcelas_cartao
-    parc_c = _charm(total_b * (1 + s.honorarios_acrescimo_cartao_pct / 100) / n_c)
-    total_c = parc_c * n_c
-
-    avista = round(total_b * (1 - s.honorarios_desconto_avista_pct / 100))
+                "instrucao": "Honorários não configurados. Não cite valores: chame transferir_humano com motivo "
+                             "'enviar proposta de honorários'."}
+    n = max(1, s.honorarios_parcelas_max)
+    exito_parc = (f"também pode ser parcelado em até {s.exito_parcelas_max}x" if s.exito_parcelas_max > 1
+                  else "também pode ser parcelado, em condições combinadas quando o resultado vier")
     return {
         "configurado": True,
-        "valor_divida_considerado": round(valor_divida, 2),
-        "boleto": {"entrada": entrada, "parcelas": n_b, "valor_parcela": parc_b, "total": total_b},
-        "cartao": {"parcelas": n_c, "valor_parcela": parc_c, "total": total_c},
-        "avista": {"valor": avista, "desconto_pct": s.honorarios_desconto_avista_pct},
-        "exito_pct_sobre_reducao": s.honorarios_exito_pct,
-        "instrucao": "Apresente as 3 formas exatamente com estes valores, mais o êxito como percentual da "
-                     "redução que for obtida (sem estimar a redução). Depois pergunte: 'Vamos começar?'",
+        "levar_para_reuniao": False,
+        "inicial": {"valor": s.honorarios_fixo, "valor_fmt": _brl(s.honorarios_fixo),
+                    "parcelas_max": n, "valor_parcela_fmt": _brl(s.honorarios_fixo / n)},
+        "exito": {"pct_sobre_economia": s.honorarios_exito_pct, "parcelamento": exito_parc},
+        "instrucao": "Apresente: honorário inicial (à vista ou parcelado, com estes valores) + êxito de X% sobre a "
+                     "economia que for gerada, pago só se houver economia, e que também pode ser parcelado. Não "
+                     "estime quanto será a economia. Termine com 'Vamos começar?'.",
     }
 
 

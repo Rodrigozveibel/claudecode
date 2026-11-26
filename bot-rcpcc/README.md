@@ -8,12 +8,13 @@ reunião com quem tem potencial**. Ouve áudio (transcrição) e responde em áu
 ## Funil (fechamento no próprio WhatsApp)
 Abordagem -> qualificação (tipos de contrato, dívida, atraso, cobranças, cartões bloqueados, foto do contrato)
 -> geração de valor -> decisões e depoimentos (`knowledge/materiais/`) -> o que está incluso -> objeções
--> história do lead (áudio) -> **proposta calculada pelo sistema** (boleto, cartão, à vista + êxito)
--> coleta dos dados com **validação de CPF** -> você recebe "CONTRATO FECHADO" no WhatsApp e envia contrato,
-procuração e cobrança. Quem quiser falar com o advogado antes ganha reunião online gratuita.
+-> história do lead (áudio) -> dois caminhos pela dívida total:
+- **até R$ 30 mil:** proposta calculada pelo sistema (R$ 1.970 parcelável + 20% da economia, parcelável) ->
+  coleta dos dados com **validação de CPF** -> você recebe "CONTRATO FECHADO" e envia contrato, procuração e cobrança;
+- **acima de R$ 30 mil:** sem preço no WhatsApp; a Dani agenda reunião online gratuita com o advogado.
 
 Os roteiros ficam em `knowledge/04_funil_whatsapp.md` e as objeções em `knowledge/03_faq.md`. Edite à vontade.
-Os valores de honorários vêm do `.env` (`HONORARIOS_*`): a IA nunca inventa preço.
+Valores e limite vêm do `.env` (`HONORARIOS_*`, `LIMITE_FECHAMENTO_WHATSAPP`): a IA nunca inventa preço.
 
 ## Como funciona
 

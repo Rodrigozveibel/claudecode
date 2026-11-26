@@ -59,16 +59,20 @@ encargos continuam correndo." (Responder com o glossário 03_faq.md.)
 aconteceu que te impediu de pagar em dia? (perdeu o emprego, ficou doente, caiu o faturamento...) Se puder, me manda
 um áudio explicando. Capricha, isso ajuda o seu processo!"
 
-## 8. Oferta
-"[Nome], para te representar e fazer todos os serviços que expliquei, os honorários são em dois momentos: iniciais e
-de êxito.
-Os honorários iniciais podem ser pagos de três formas, à sua escolha:
-- No boleto: entrada de R$[entrada] + [n] parcelas de R$[parcela];
-- No cartão de crédito: até [n]x de R$[parcela];
-- À vista, com [desconto]% de desconto: R$[valor].
-E os honorários de êxito são de [x]% sobre a redução que conseguirmos na sua dívida, pagos só se ela acontecer.
+## 8A. Oferta - dívida até R$ 30 mil (fecha no WhatsApp)
+"[Nome], para te representar e fazer todos os serviços que expliquei, os honorários são em dois momentos:
+- Honorário inicial de R$ 1.970,00, que pode ser pago à vista ou parcelado em até [n]x de R$ [parcela];
+- Honorário de êxito de 20% sobre a economia que conseguirmos gerar na sua dívida. Ele só existe se houver
+  economia, e também pode ser parcelado.
 Se tiver qualquer dúvida sobre o processo ou os custos, estou aqui. Vamos começar?"
 (Valores SEMPRE da ferramenta calcular_honorarios.)
+
+## 8B. Dívida acima de R$ 30 mil (vai para reunião)
+"[Nome], pelo tamanho e pela importância do seu caso, o Dr. Rodrigo faz questão de analisar pessoalmente antes de
+te apresentar a proposta. A reunião é online, por videochamada, e gratuita, dura cerca de 30 minutos. Qual destes
+horários fica melhor para você?" (oferecer 2 ou 3 horários)
+Se o lead pedir valores: "O Dr. apresenta a proposta na reunião, depois de olhar o seu contrato. Assim ela fica
+certinha para o seu caso."
 
 ## 9. Fechamento
 "Que ótimo! Para darmos início à revisão dos seus contratos, preciso formalizar o contrato e coletar os documentos.
@@ -84,4 +88,4 @@ Telefone:
 Valor atual da dívida:"
 Depois: enviar_material(checklist) ou, sem arquivo, pedir: RG/CNH, CPF, comprovante de residência recente,
 contratos (ou prints do app), extratos/faturas das dívidas e comprovante de renda.
-Com os dados: registrar_fechamento. A equipe envia contrato e procuração para assinatura digital e o pagamento.
+Com os dados (incluindo à vista ou parcelado e em quantas vezes): registrar_fechamento. A equipe envia contrato e procuração para assinatura digital e o pagamento.

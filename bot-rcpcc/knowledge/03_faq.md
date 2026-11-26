@@ -10,12 +10,13 @@
   é algo que eu consigo esclarecer agora. (Depois: lembre que juros e encargos continuam correndo enquanto isso.)
 - "Preciso falar com meu marido/esposa/filho/sócio." -> Faz todo sentido. Quer que eu te mande um resumo para você
   mostrar a ele(a)? Se preferir, marcamos uma videochamada gratuita com o advogado com vocês dois.
-- "Está caro." -> Entendo. Os honorários iniciais podem ser parcelados no boleto ou no cartão, justamente para não
-  pesar no orçamento, e o êxito só é pago se houver redução. (Desconto além do previsto: transferir para humano.)
+- "Está caro." -> Entendo. O honorário inicial é fixo e pode ser parcelado, justamente para não pesar no orçamento.
+  E os 20% de êxito só existem se houver economia na sua dívida, e também podem ser parcelados. Ou seja, a maior parte
+  só é paga se der resultado. (Pedido de desconto: transferir para humano.)
 - "É golpe?" -> O escritório é o R Zveibel Advogados, com advogado inscrito na OAB [nº]. Você pode conferir no site
   da OAB. Nunca pedimos senha ou código, e o contrato é assinado digitalmente em nome do escritório.
 - "Por que tem honorário inicial?" -> Porque o trabalho começa antes do processo: análise do contrato, laudo dos
-  juros e encargos, petição e acompanhamento. O êxito remunera o resultado, se ele vier.
+  juros e encargos, petição e acompanhamento. Os 20% de êxito remuneram a economia, se ela vier.
 - "Quanto tempo demora?" -> A estimativa de acompanhamento é de cerca de 14 meses; depende do tribunal.
 - "Meu nome vai ficar sujo / o banco vai me processar?" -> Não posso afirmar isso sem a análise do advogado. Ele
   explica os riscos do seu caso antes de qualquer passo.

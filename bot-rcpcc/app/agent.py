@@ -97,8 +97,8 @@ TOOLS = [
                 "resumo_caso": {"type": "string", "description": "Resumo objetivo do caso para o advogado"},
             }),
     _strict("calcular_honorarios",
-            "Calcula a proposta de honorários (boleto, cartão, à vista + êxito) a partir da dívida. Use SÓ na "
-            "etapa de oferta, depois da geração de valor e da explicação do serviço.",
+            "Calcula a proposta de honorários a partir da dívida total. Use SÓ na etapa de oferta. Se a dívida "
+            "passar do limite, devolve levar_para_reuniao=true e não traz valores.",
             {"valor_divida": {"type": "number", "description": "Dívida total atual em R$"}}),
     _strict("enviar_material",
             "Envia ao lead um material do escritório: decisao (decisão judicial semelhante, anonimizada), "
@@ -118,7 +118,8 @@ TOOLS = [
                 "email": _nullable("string", ""),
                 "telefone": _nullable("string", ""),
                 "valor_divida": _nullable("number", ""),
-                "forma_pagamento": {"type": "string", "enum": ["boleto", "cartao", "avista"]},
+                "forma_pagamento": {"type": "string", "enum": ["avista", "parcelado"]},
+                "parcelas": _nullable("integer", "Nº de parcelas do honorário inicial, se parcelado"),
                 "documentos_recebidos": {"type": "boolean", "description": "Já mandou os documentos do checklist"},
             }),
     _strict("transferir_atendimento",
@@ -219,8 +220,12 @@ async def executar_tool(ctx: Contexto, nome: str, args: dict) -> str:
                                "instrucao": "Diga que a equipe confirma o horário em breve por aqui."})
 
         if nome == "calcular_honorarios":
-            r = honorarios.calcular(args["valor_divida"])
-            if r.get("configurado"):
+            lead = db.get_lead(ctx.contact_id)
+            divida = max(args["valor_divida"] or 0, lead.get("valor_divida_atual") or 0)
+            r = honorarios.calcular(divida)
+            if r.get("levar_para_reuniao"):
+                ctx.status_novo = "reuniao"
+            elif r.get("configurado"):
                 ctx.status_novo = "oferta"
                 lead = db.get_lead(ctx.contact_id)
                 lead["proposta"] = r
@@ -241,6 +246,10 @@ async def executar_tool(ctx: Contexto, nome: str, args: dict) -> str:
                                "instrucao": "O arquivo já foi enviado; não repita o conteúdo dele."})
 
         if nome == "registrar_fechamento":
+            divida_lead = max(args.get("valor_divida") or 0, db.get_lead(ctx.contact_id).get("valor_divida_atual") or 0)
+            if honorarios.vai_para_reuniao(divida_lead):
+                return json.dumps({"ok": False, "erro": "Dívida acima do limite: este caso fecha na reunião com o "
+                                   "advogado. Ofereça/agende a reunião online gratuita."})
             if not honorarios.cpf_valido(args["cpf"]):
                 return json.dumps({"ok": False, "erro": "CPF inválido. Peça para o lead conferir e reenviar."})
             lead = db.get_lead(ctx.contact_id)
@@ -249,12 +258,11 @@ async def executar_tool(ctx: Contexto, nome: str, args: dict) -> str:
             faltam = [k for k, v in args.items() if v in (None, "")]
             ctx.status_novo = "fechado"
             prop = lead.get("proposta") or {}
-            pag = args["forma_pagamento"]
-            valor_pag = (prop.get(pag) or {}) if prop else {}
+            pag = args["forma_pagamento"] + (f" {args['parcelas']}x" if args.get("parcelas") else "")
             await _avisar_advogado(ctx, "CONTRATO FECHADO - emitir contrato, procuração e cobrança",
                                    f"{args['nome_completo']} | CPF {args['cpf']}\n"
-                                   f"Pagamento: {pag} {valor_pag}\n"
-                                   f"Êxito: {prop.get('exito_pct_sobre_reducao')}% da redução\n"
+                                   f"Inicial: {(prop.get('inicial') or {}).get('valor_fmt')} ({pag})\n"
+                                   f"Êxito: {(prop.get('exito') or {}).get('pct_sobre_economia')}% da economia\n"
                                    f"Documentos recebidos: {'sim' if args['documentos_recebidos'] else 'NÃO'}\n"
                                    f"Faltando: {', '.join(faltam) or 'nada'}")
             await digisac.transferir_ticket(ctx.contact_id, f"FECHADO ({pag}). Emitir contrato/procuração/cobrança.")

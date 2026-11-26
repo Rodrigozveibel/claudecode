@@ -46,15 +46,13 @@ class Settings(BaseSettings):
     nome_advogado: str = "Dr. Rodrigo Zveibel"
     nome_assistente: str = "Dani"
 
-    # ===== Honorários (funil de fechamento no WhatsApp). 0 = desligado: o robô não cita valores. =====
-    honorarios_inicial_pct: float = 0.0        # % da dívida (funil sugere 5 a 10)
-    honorarios_inicial_minimo: float = 0.0     # piso dos honorários iniciais em R$
-    honorarios_exito_pct: float = 0.0          # % da redução obtida (funil sugere 7 a 10)
-    honorarios_entrada_pct: float = 19.0       # entrada no boleto (% do total)
-    honorarios_parcelas_boleto: int = 10
-    honorarios_parcelas_cartao: int = 10
-    honorarios_acrescimo_cartao_pct: float = 7.5
-    honorarios_desconto_avista_pct: float = 15.0
+    # ===== Honorários e regra de fechamento =====
+    honorarios_fixo: float = 1970.0           # honorário inicial fixo (0 = robô não cita valores)
+    honorarios_parcelas_max: int = 10         # inicial parcelável em até N vezes
+    honorarios_exito_pct: float = 20.0        # % sobre a economia gerada
+    exito_parcelas_max: int = 0               # 0 = "parcelável, condições combinadas"
+    # dívidas acima deste valor não fecham no WhatsApp: vão para reunião online gratuita
+    limite_fechamento_whatsapp: float = 30000.0
     # follow-up depois de 24h sem resposta só funciona em WhatsApp não oficial ou com template aprovado
     followup_fora_janela_24h: bool = False
 

@@ -198,6 +198,8 @@ FOLLOWUPS = [
      "contrato que eu já adianto a análise.", None, False),
     ("triagem", 1, 20, 23, "Passando só para saber se ainda quer que a gente analise seus contratos bancários. "
      "Se não for o momento, sem problema, é só me avisar.", None, False),
+    ("reuniao", 0, 3, 20, "Oi{nome}! Conseguiu ver os horários para a reunião online com o Dr. Rodrigo? É "
+     "gratuita e rapidinha. Me diz o melhor dia e horário para você.", None, False),
     ("oferta", 0, 20, 23, "Olá{nome}, notamos que ainda não recebemos sua confirmação para iniciarmos a revisão "
      "dos seus contratos bancários. Entendemos que entrar com uma ação revisional é uma decisão importante e "
      "estamos à disposição para esclarecer qualquer dúvida. Conte com a nossa equipe.", None, False),
